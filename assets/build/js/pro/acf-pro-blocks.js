@@ -1,30 +1,31 @@
-/******/ (function() { // webpackBootstrap
+/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
 /***/ "./src/advanced-custom-fields-pro/assets/src/js/pro/_acf-blocks.js":
 /*!*************************************************************************!*\
   !*** ./src/advanced-custom-fields-pro/assets/src/js/pro/_acf-blocks.js ***!
   \*************************************************************************/
-/***/ (function(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _babel_runtime_helpers_defineProperty__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @babel/runtime/helpers/defineProperty */ "./node_modules/@babel/runtime/helpers/esm/defineProperty.js");
-/* harmony import */ var _wordpress_element__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @wordpress/element */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_1__);
 
 
-
-function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) { symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); } keys.push.apply(keys, symbols); } return keys; }
-
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(Object(source), true).forEach(function (key) { (0,_babel_runtime_helpers_defineProperty__WEBPACK_IMPORTED_MODULE_0__["default"])(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
-
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { (0,_babel_runtime_helpers_defineProperty__WEBPACK_IMPORTED_MODULE_0__["default"])(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+const md5 = __webpack_require__(/*! md5 */ "./node_modules/md5/md5.js");
 (($, undefined) => {
   // Dependencies.
   const {
     BlockControls,
     InspectorControls,
     InnerBlocks,
-    useBlockProps
+    useBlockProps,
+    AlignmentToolbar,
+    BlockVerticalAlignmentToolbar
   } = wp.blockEditor;
   const {
     ToolbarGroup,
@@ -44,14 +45,22 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
   const {
     createHigherOrderComponent
   } = wp.compose;
+
+  // Potentially experimental dependencies.
+  const BlockAlignmentMatrixToolbar = wp.blockEditor.__experimentalBlockAlignmentMatrixToolbar || wp.blockEditor.BlockAlignmentMatrixToolbar;
+  // Gutenberg v10.x begins transition from Toolbar components to Control components.
+  const BlockAlignmentMatrixControl = wp.blockEditor.__experimentalBlockAlignmentMatrixControl || wp.blockEditor.BlockAlignmentMatrixControl;
+  const BlockFullHeightAlignmentControl = wp.blockEditor.__experimentalBlockFullHeightAligmentControl || wp.blockEditor.__experimentalBlockFullHeightAlignmentControl || wp.blockEditor.BlockFullHeightAlignmentControl;
+  const useInnerBlocksProps = wp.blockEditor.__experimentalUseInnerBlocksProps || wp.blockEditor.useInnerBlocksProps;
+
   /**
    * Storage for registered block types.
    *
    * @since 5.8.0
    * @var object
    */
-
   const blockTypes = {};
+
   /**
    * Returns a block type for the given name.
    *
@@ -61,46 +70,109 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	string name The block name.
    * @return	(object|false)
    */
-
   function getBlockType(name) {
     return blockTypes[name] || false;
   }
+
   /**
-   * Returns true if the provided block is new.
+   * Returns a block version for a given block name
    *
-   * @date	31/07/2020
-   * @since	5.9.0
+   * @date 8/6/22
+   * @since 6.0
    *
-   * @param	object props The block props (of which, the attributes properties is destructured)
-   * @return	bool
+   * @param string name The block name
+   * @return int
    */
-
-
-  function isNewBlock(_ref) {
-    let {
-      attributes
-    } = _ref;
-    return !attributes.id;
+  function getBlockVersion(name) {
+    const blockType = getBlockType(name);
+    return blockType.acf_block_version || 1;
   }
+
   /**
-   * Returns true if the provided block is a duplicate:
-   * True when there are is another block with the same "id", but a different "clientId".
+   * Returns true if a block (identified by client ID) is nested in a query loop block.
    *
-   * @date	31/07/2020
-   * @since	5.9.0
+   * @date 17/1/22
+   * @since 5.12
    *
-   * @param	object props The block props (of which, the attributes and clientId properties are destructured)
-   * @return	bool
+   * @param {string} clientId A block client ID
+   * @return boolean
    */
-
-
-  function isDuplicateBlock(_ref2) {
-    let {
-      attributes,
-      clientId
-    } = _ref2;
-    return getBlocks().filter(block => block.attributes.id === attributes.id).filter(block => block.clientId !== clientId).length;
+  function isBlockInQueryLoop(clientId) {
+    const parents = wp.data.select('core/block-editor').getBlockParents(clientId);
+    const parentsData = wp.data.select('core/block-editor').getBlocksByClientId(parents);
+    return parentsData.filter(block => block.name === 'core/query').length;
   }
+
+  /**
+   * Returns true if we're currently inside the WP 5.9+ site editor.
+   *
+   * @date 08/02/22
+   * @since 5.12
+   *
+   * @return boolean
+   */
+  function isSiteEditor() {
+    return typeof pagenow === 'string' && pagenow === 'site-editor';
+  }
+
+  /**
+   * Returns true if the block editor is currently showing the desktop device type preview.
+   *
+   * This function will always return true in the site editor as it uses the
+   * edit-post store rather than the edit-site store.
+   *
+   * @date 15/02/22
+   * @since 5.12
+   *
+   * @return boolean
+   */
+  function isDesktopPreviewDeviceType() {
+    const editPostStore = select('core/edit-post');
+
+    // Return true if the edit post store isn't available (such as in the widget editor)
+    if (!editPostStore) return true;
+
+    // Check if function exists (experimental or not) and return true if it's Desktop, or doesn't exist.
+    if (editPostStore.__experimentalGetPreviewDeviceType) {
+      return 'Desktop' === editPostStore.__experimentalGetPreviewDeviceType();
+    } else if (editPostStore.getPreviewDeviceType) {
+      return 'Desktop' === editPostStore.getPreviewDeviceType();
+    } else {
+      return true;
+    }
+  }
+
+  /**
+   * Returns true if the block editor is currently in template edit mode.
+   *
+   * @date 16/02/22
+   * @since 5.12
+   *
+   * @return boolean
+   */
+  function isEditingTemplate() {
+    const editPostStore = select('core/edit-post');
+
+    // Return false if the edit post store isn't available (such as in the widget editor)
+    if (!editPostStore) return false;
+
+    // Return false if the function doesn't exist
+    if (!editPostStore.isEditingTemplate) return false;
+    return editPostStore.isEditingTemplate();
+  }
+
+  /**
+   * Returns true if we're currently inside an iFramed non-desktop device preview type (WP5.9+)
+   *
+   * @date 15/02/22
+   * @since 5.12
+   *
+   * @return boolean
+   */
+  function isiFramedMobileDevicePreview() {
+    return $('iframe[name=editor-canvas]').length && !isDesktopPreviewDeviceType();
+  }
+
   /**
    * Registers a block type.
    *
@@ -110,116 +182,110 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	object blockType The block type settings localized from PHP.
    * @return	object The result from wp.blocks.registerBlockType().
    */
-
-
   function registerBlockType(blockType) {
     // Bail early if is excluded post_type.
     const allowedTypes = blockType.post_types || [];
-
     if (allowedTypes.length) {
       // Always allow block to appear on "Edit reusable Block" screen.
-      allowedTypes.push('wp_block'); // Check post type.
+      allowedTypes.push('wp_block');
 
+      // Check post type.
       const postType = acf.get('postType');
-
       if (!allowedTypes.includes(postType)) {
         return false;
       }
-    } // Handle svg HTML.
+    }
 
-
+    // Handle svg HTML.
     if (typeof blockType.icon === 'string' && blockType.icon.substr(0, 4) === '<svg') {
       const iconHTML = blockType.icon;
-      blockType.icon = (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(Div, null, iconHTML);
-    } // Remove icon if empty to allow for default "block".
+      blockType.icon = (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(Div, null, iconHTML);
+    }
+
+    // Remove icon if empty to allow for default "block".
     // Avoids JS error preventing block from being registered.
-
-
     if (!blockType.icon) {
       delete blockType.icon;
-    } // Check category exists and fallback to "common".
+    }
 
-
-    const category = wp.blocks.getCategories().filter(_ref3 => {
-      let {
-        slug
-      } = _ref3;
-      return slug === blockType.category;
-    }).pop();
-
+    // Check category exists and fallback to "common".
+    const category = wp.blocks.getCategories().filter(({
+      slug
+    }) => slug === blockType.category).pop();
     if (!category) {
       //console.warn( `The block "${blockType.name}" is registered with an unknown category "${blockType.category}".` );
       blockType.category = 'common';
-    } // Define block type attributes.
-    // Leave default undefined to allow WP to serialize attributes in HTML comments.
-    // See https://github.com/WordPress/gutenberg/issues/7342
+    }
 
-
-    let attributes = {
-      id: {
-        type: 'string'
-      },
-      name: {
-        type: 'string'
-      },
-      data: {
-        type: 'object'
-      },
-      align: {
-        type: 'string'
-      },
-      mode: {
-        type: 'string'
-      }
-    }; // Append edit and save functions.
-
-    let ThisBlockEdit = BlockEdit;
-    let ThisBlockSave = BlockSave; // Apply align_text functionality.
-
-    if (blockType.supports.align_text) {
-      attributes = withAlignTextAttributes(attributes);
-      ThisBlockEdit = withAlignTextComponent(ThisBlockEdit, blockType);
-    } // Apply align_content functionality.
-
-
-    if (blockType.supports.align_content) {
-      attributes = withAlignContentAttributes(attributes);
-      ThisBlockEdit = withAlignContentComponent(ThisBlockEdit, blockType);
-    } // Apply full_height functionality.
-
-
-    if (blockType.supports.full_height) {
-      attributes = withFullHeightAttributes(attributes);
-      ThisBlockEdit = withFullHeightComponent(ThisBlockEdit, blockType);
-    } // Merge in block settings.
-
-
+    // Merge in block settings before local additions.
     blockType = acf.parseArgs(blockType, {
       title: '',
       name: '',
       category: '',
-      attributes,
-      apiVersion: 2,
-      edit: props => (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(ThisBlockEdit, props),
-      save: props => {
-        return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(ThisBlockSave, useBlockProps.save());
+      api_version: 2,
+      acf_block_version: 1
+    });
+
+    // Remove all empty attribute defaults from PHP values to allow serialisation.
+    // https://github.com/WordPress/gutenberg/issues/7342
+    for (const key in blockType.attributes) {
+      if (blockType.attributes[key].default.length === 0) {
+        delete blockType.attributes[key].default;
       }
-    }); // Add to storage.
+    }
 
-    blockTypes[blockType.name] = blockType; // Register with WP.
+    // Apply anchor supports to avoid block editor default writing to ID.
+    if (blockType.supports.anchor) {
+      blockType.attributes.anchor = {
+        type: 'string'
+      };
+    }
 
-    const result = wp.blocks.registerBlockType(blockType.name, blockType); // Fix bug in 'core/anchor/attribute' filter overwriting attribute.
+    // Append edit and save functions.
+    let ThisBlockEdit = BlockEdit;
+    let ThisBlockSave = BlockSave;
+
+    // Apply alignText functionality.
+    if (blockType.supports.alignText || blockType.supports.align_text) {
+      blockType.attributes = addBackCompatAttribute(blockType.attributes, 'align_text', 'string');
+      ThisBlockEdit = withAlignTextComponent(ThisBlockEdit, blockType);
+    }
+
+    // Apply alignContent functionality.
+    if (blockType.supports.alignContent || blockType.supports.align_content) {
+      blockType.attributes = addBackCompatAttribute(blockType.attributes, 'align_content', 'string');
+      ThisBlockEdit = withAlignContentComponent(ThisBlockEdit, blockType);
+    }
+
+    // Apply fullHeight functionality.
+    if (blockType.supports.fullHeight || blockType.supports.full_height) {
+      blockType.attributes = addBackCompatAttribute(blockType.attributes, 'full_height', 'boolean');
+      ThisBlockEdit = withFullHeightComponent(ThisBlockEdit, blockType.blockType);
+    }
+
+    // Set edit and save functions.
+    blockType.edit = props => (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(ThisBlockEdit, _objectSpread({}, props));
+    blockType.save = () => (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(ThisBlockSave, null);
+
+    // Add to storage.
+    blockTypes[blockType.name] = blockType;
+
+    // Register with WP.
+    const result = wp.blocks.registerBlockType(blockType.name, blockType);
+
+    // Fix bug in 'core/anchor/attribute' filter overwriting attribute.
+    // Required for < WP5.9
     // See https://github.com/WordPress/gutenberg/issues/15240
-
     if (result.attributes.anchor) {
       result.attributes.anchor = {
         type: 'string'
       };
-    } // Return result.
+    }
 
-
+    // Return result.
     return result;
   }
+
   /**
    * Returns the wp.data.select() response with backwards compatibility.
    *
@@ -229,15 +295,13 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	string selector The selector name.
    * @return	mixed
    */
-
-
   function select(selector) {
     if (selector === 'core/block-editor') {
       return wp.data.select('core/block-editor') || wp.data.select('core/editor');
     }
-
     return wp.data.select(selector);
   }
+
   /**
    * Returns the wp.data.dispatch() response with backwards compatibility.
    *
@@ -247,49 +311,57 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	string selector The selector name.
    * @return	mixed
    */
-
-
   function dispatch(selector) {
     return wp.data.dispatch(selector);
   }
+
   /**
    * Returns an array of all blocks for the given args.
    *
    * @date	27/2/19
    * @since	5.7.13
    *
-   * @param	object args An object of key=>value pairs used to filter results.
+   * @param	{object} args An object of key=>value pairs used to filter results.
    * @return	array.
    */
-
-
   function getBlocks(args) {
-    // Get all blocks (avoid deprecated warning).
-    let blocks = select('core/block-editor').getBlocks(); // Append innerBlocks.
+    let blocks = [];
 
-    let i = 0;
+    // Local function to recurse through all child blocks and add to the blocks array.
+    const recurseBlocks = block => {
+      blocks.push(block);
+      select('core/block-editor').getBlocks(block.clientId).forEach(recurseBlocks);
+    };
 
-    while (i < blocks.length) {
-      blocks = blocks.concat(blocks[i].innerBlocks);
-      i++;
-    } // Loop over args and filter.
+    // Trigger initial recursion for parent level blocks.
+    select('core/block-editor').getBlocks().forEach(recurseBlocks);
 
-
+    // Loop over args and filter.
     for (const k in args) {
-      blocks = blocks.filter(_ref4 => {
-        let {
-          attributes
-        } = _ref4;
-        return attributes[k] === args[k];
-      });
-    } // Return results.
+      blocks = blocks.filter(({
+        attributes
+      }) => attributes[k] === args[k]);
+    }
 
-
+    // Return results.
     return blocks;
-  } // Data storage for AJAX requests.
+  }
 
-
+  /**
+   * Storage for the AJAX queue.
+   *
+   * @const {array}
+   */
   const ajaxQueue = {};
+
+  /**
+   * Storage for cached AJAX requests for block content.
+   *
+   * @since 5.12
+   * @const {array}
+   */
+  const fetchCache = {};
+
   /**
    * Fetches a JSON result from the AJAX API.
    *
@@ -300,51 +372,67 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @query	object The query args used in AJAX callback.
    * @return	object The AJAX promise.
    */
-
   function fetchBlock(args) {
     const {
       attributes = {},
+      context = {},
       query = {},
+      clientId = null,
       delay = 0
-    } = args; // Use storage or default data.
+    } = args;
 
-    const {
-      id
-    } = attributes;
-    const data = ajaxQueue[id] || {
+    // Build a unique queue ID from block data, including the clientId for edit forms.
+    const queueId = md5(JSON.stringify(_objectSpread(_objectSpread(_objectSpread({}, attributes), context), query)));
+    const data = ajaxQueue[queueId] || {
       query: {},
       timeout: false,
-      promise: $.Deferred()
-    }; // Append query args to storage.
+      promise: $.Deferred(),
+      started: false
+    };
 
-    data.query = _objectSpread(_objectSpread({}, data.query), query); // Set fresh timeout.
+    // Append query args to storage.
+    data.query = _objectSpread(_objectSpread({}, data.query), query);
+    if (data.started) return data.promise;
 
+    // Set fresh timeout.
     clearTimeout(data.timeout);
     data.timeout = setTimeout(() => {
-      $.ajax({
-        url: acf.get('ajaxurl'),
-        dataType: 'json',
-        type: 'post',
-        cache: false,
-        data: acf.prepareForAjax({
-          action: 'acf/ajax/fetch-block',
-          block: JSON.stringify(attributes),
-          query: data.query
-        })
-      }).always(() => {
-        // Clean up queue after AJAX request is complete.
-        ajaxQueue[id] = null;
-      }).done(function () {
-        data.promise.resolve.apply(this, arguments);
-      }).fail(function () {
-        data.promise.reject.apply(this, arguments);
-      });
-    }, delay); // Update storage.
+      data.started = true;
+      if (fetchCache[queueId]) {
+        ajaxQueue[queueId] = null;
+        data.promise.resolve.apply(fetchCache[queueId][0], fetchCache[queueId][1]);
+      } else {
+        $.ajax({
+          url: acf.get('ajaxurl'),
+          dataType: 'json',
+          type: 'post',
+          cache: false,
+          data: acf.prepareForAjax({
+            action: 'acf/ajax/fetch-block',
+            block: JSON.stringify(attributes),
+            clientId: clientId,
+            context: JSON.stringify(context),
+            query: data.query
+          })
+        }).always(() => {
+          // Clean up queue after AJAX request is complete.
+          ajaxQueue[queueId] = null;
+        }).done(function () {
+          fetchCache[queueId] = [this, arguments];
+          data.promise.resolve.apply(this, arguments);
+        }).fail(function () {
+          data.promise.reject.apply(this, arguments);
+        });
+      }
+    }, delay);
 
-    ajaxQueue[id] = data; // Return promise.
+    // Update storage.
+    ajaxQueue[queueId] = data;
 
+    // Return promise.
     return data.promise;
   }
+
   /**
    * Returns true if both object are the same.
    *
@@ -355,11 +443,10 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	object obj2
    * @return	bool
    */
-
-
   function compareObjects(obj1, obj2) {
     return JSON.stringify(obj1) === JSON.stringify(obj2);
   }
+
   /**
    * Converts HTML into a React element.
    *
@@ -367,11 +454,17 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @since	5.9.0
    *
    * @param	string html The HTML to convert.
+   * @param	int acfBlockVersion The ACF block version number.
    * @return	object Result of React.createElement().
    */
+  acf.parseJSX = (html, acfBlockVersion) => {
+    // Apply a temporary wrapper for the jQuery parse to prevent text nodes triggering errors.
+    html = '<div>' + html + '</div>';
+    // Correctly balance InnerBlocks tags for jQuery's initial parse.
+    html = html.replace(/<InnerBlocks([^>]+)?\/>/, '<InnerBlocks$1></InnerBlocks>');
+    return parseNode($(html)[0], acfBlockVersion, 0).props.children;
+  };
 
-
-  acf.parseJSX = html => parseNode($(html)[0]);
   /**
    * Converts a DOM node into a React element.
    *
@@ -379,43 +472,50 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @since	5.9.0
    *
    * @param	DOM node The DOM node.
+   * @param	int acfBlockVersion The ACF block version number.
+   * @param	int level The recursion level.
    * @return	object Result of React.createElement().
    */
-
-
-  function parseNode(node) {
+  function parseNode(node, acfBlockVersion, level = 0) {
     // Get node name.
-    const nodeName = parseNodeName(node.nodeName.toLowerCase());
-
+    const nodeName = parseNodeName(node.nodeName.toLowerCase(), acfBlockVersion);
     if (!nodeName) {
       return null;
-    } // Get node attributes in React friendly format.
+    }
 
-
+    // Get node attributes in React friendly format.
     const nodeAttrs = {};
-    acf.arrayArgs(node.attributes).map(parseNodeAttr).forEach(_ref5 => {
-      let {
-        name,
-        value
-      } = _ref5;
+    if (level === 1 && nodeName !== 'ACFInnerBlocks') {
+      // Top level (after stripping away the container div), create a ref for passing through to ACF's JS API.
+      nodeAttrs.ref = React.createRef();
+    }
+    acf.arrayArgs(node.attributes).map(parseNodeAttr).forEach(({
+      name,
+      value
+    }) => {
       nodeAttrs[name] = value;
-    }); // Define args for React.createElement().
+    });
+    if ('ACFInnerBlocks' === nodeName) {
+      return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(ACFInnerBlocks, _objectSpread({}, nodeAttrs));
+    }
 
+    // Define args for React.createElement().
     const args = [nodeName, nodeAttrs];
     acf.arrayArgs(node.childNodes).forEach(child => {
       if (child instanceof Text) {
         const text = child.textContent;
-
         if (text) {
           args.push(text);
         }
       } else {
-        args.push(parseNode(child));
+        args.push(parseNode(child, acfBlockVersion, level + 1));
       }
-    }); // Return element.
+    });
 
+    // Return element.
     return React.createElement.apply(this, args);
   }
+
   /**
    * Converts a node or attribute name into it's JSX compliant name
    *
@@ -423,15 +523,14 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @since    5.9.8
    *
    * @param    string name The node or attribute name.
-   * @returns  string
+   * @return  string
    */
-
-
   function getJSXName(name) {
     const replacement = acf.isget(acf, 'jsxNameReplacements', name);
     if (replacement) return replacement;
     return name;
   }
+
   /**
    * Converts the given name into a React friendly name or component.
    *
@@ -439,28 +538,45 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @since	5.9.0
    *
    * @param	string name The node name in lowercase.
+   * @param	int acfBlockVersion The ACF block version number.
    * @return	mixed
    */
-
-
-  function parseNodeName(name) {
+  function parseNodeName(name, acfBlockVersion) {
     switch (name) {
       case 'innerblocks':
-        return InnerBlocks;
-
+        if (acfBlockVersion < 2) {
+          return InnerBlocks;
+        }
+        return 'ACFInnerBlocks';
       case 'script':
         return Script;
-
       case '#comment':
         return null;
-
       default:
         // Replace names for JSX counterparts.
         name = getJSXName(name);
     }
-
     return name;
   }
+
+  /**
+   * Functional component for ACFInnerBlocks.
+   *
+   * @since 6.0.0
+   *
+   * @param obj props element properties.
+   * @return DOM element
+   */
+  function ACFInnerBlocks(props) {
+    const {
+      className = 'acf-innerblocks-container'
+    } = props;
+    const innerBlockProps = useInnerBlocksProps({
+      className: className
+    }, props);
+    return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", _objectSpread({}, innerBlockProps), innerBlockProps.children);
+  }
+
   /**
    * Converts the given attribute into a React friendly name and value object.
    *
@@ -470,67 +586,66 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	obj nodeAttr The node attribute.
    * @return	obj
    */
-
-
   function parseNodeAttr(nodeAttr) {
     let name = nodeAttr.name;
     let value = nodeAttr.value;
 
+    // Allow overrides for third party libraries who might use specific attributes.
+    let shortcut = acf.applyFilters('acf_blocks_parse_node_attr', false, nodeAttr);
+    if (shortcut) return shortcut;
     switch (name) {
       // Class.
       case 'class':
         name = 'className';
         break;
-      // Style.
 
+      // Style.
       case 'style':
         const css = {};
         value.split(';').forEach(s => {
           const pos = s.indexOf(':');
-
           if (pos > 0) {
             let ruleName = s.substr(0, pos).trim();
-            const ruleValue = s.substr(pos + 1).trim(); // Rename core properties, but not CSS variables.
+            const ruleValue = s.substr(pos + 1).trim();
 
+            // Rename core properties, but not CSS variables.
             if (ruleName.charAt(0) !== '-') {
               ruleName = acf.strCamelCase(ruleName);
             }
-
             css[ruleName] = ruleValue;
           }
         });
         value = css;
         break;
-      // Default.
 
+      // Default.
       default:
         // No formatting needed for "data-x" attributes.
         if (name.indexOf('data-') === 0) {
           break;
-        } // Replace names for JSX counterparts.
+        }
 
+        // Replace names for JSX counterparts.
+        name = getJSXName(name);
 
-        name = getJSXName(name); // Convert JSON values.
-
+        // Convert JSON values.
         const c1 = value.charAt(0);
-
         if (c1 === '[' || c1 === '{') {
           value = JSON.parse(value);
-        } // Convert bool values.
+        }
 
-
+        // Convert bool values.
         if (value === 'true' || value === 'false') {
           value = value === 'true';
         }
-
         break;
     }
-
     return {
       name,
       value
     };
   }
+
   /**
    * Higher Order Component used to set default block attribute values.
    *
@@ -543,173 +658,200 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	Component BlockListBlock The BlockListBlock Component.
    * @return	Component
    */
-
-
   const withDefaultAttributes = createHigherOrderComponent(BlockListBlock => class WrappedBlockEdit extends Component {
     constructor(props) {
-      super(props); // Extract vars.
+      super(props);
 
+      // Extract vars.
       const {
         name,
         attributes
-      } = this.props; // Only run on ACF Blocks.
+      } = this.props;
 
+      // Only run on ACF Blocks.
       const blockType = getBlockType(name);
-
       if (!blockType) {
         return;
-      } // Set unique ID and default attributes for newly added blocks.
+      }
 
+      // Check and remove any empty string attributes to match PHP behaviour.
+      Object.keys(attributes).forEach(key => {
+        if (attributes[key] === '') {
+          delete attributes[key];
+        }
+      });
 
-      if (isNewBlock(props)) {
-        attributes.id = acf.uniqid('block_');
-
-        for (let attribute in blockType.attributes) {
-          if (attributes[attribute] === undefined && blockType[attribute] !== undefined) {
-            attributes[attribute] = blockType[attribute];
+      // Backward compatibility attribute replacement.
+      const upgrades = {
+        full_height: 'fullHeight',
+        align_content: 'alignContent',
+        align_text: 'alignText'
+      };
+      Object.keys(upgrades).forEach(key => {
+        if (attributes[key] !== undefined) {
+          attributes[upgrades[key]] = attributes[key];
+        } else if (attributes[upgrades[key]] === undefined) {
+          //Check for a default
+          if (blockType[key] !== undefined) {
+            attributes[upgrades[key]] = blockType[key];
           }
         }
+        delete blockType[key];
+        delete attributes[key];
+      });
 
-        return;
-      } // Generate new ID for duplicated blocks.
-
-
-      if (isDuplicateBlock(props)) {
-        attributes.id = acf.uniqid('block_');
-        return;
+      // Set default attributes for those undefined.
+      for (let attribute in blockType.attributes) {
+        if (attributes[attribute] === undefined && blockType[attribute] !== undefined) {
+          attributes[attribute] = blockType[attribute];
+        }
       }
     }
-
     render() {
-      return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockListBlock, this.props);
+      return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockListBlock, _objectSpread({}, this.props));
     }
-
   }, 'withDefaultAttributes');
   wp.hooks.addFilter('editor.BlockListBlock', 'acf/with-default-attributes', withDefaultAttributes);
+
   /**
    * The BlockSave functional component.
    *
    * @date	08/07/2020
    * @since	5.9.0
    */
-
   function BlockSave() {
-    return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerBlocks.Content, null);
+    return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(InnerBlocks.Content, null);
   }
+
   /**
    * The BlockEdit component.
    *
    * @date	19/2/19
    * @since	5.7.12
    */
-
-
   class BlockEdit extends Component {
     constructor(props) {
       super(props);
       this.setup();
     }
-
     setup() {
       const {
         name,
-        attributes
+        attributes,
+        clientId
       } = this.props;
-      const blockType = getBlockType(name); // Restrict current mode.
+      const blockType = getBlockType(name);
 
+      // Restrict current mode.
       function restrictMode(modes) {
         if (!modes.includes(attributes.mode)) {
           attributes.mode = modes[0];
         }
       }
-
-      switch (blockType.mode) {
-        case 'edit':
-          restrictMode(['edit', 'preview']);
-          break;
-
-        case 'preview':
-          restrictMode(['preview', 'edit']);
-          break;
-
-        default:
-          restrictMode(['auto']);
-          break;
+      if (isBlockInQueryLoop(clientId) || isSiteEditor() || isiFramedMobileDevicePreview() || isEditingTemplate()) {
+        restrictMode(['preview']);
+      } else {
+        switch (blockType.mode) {
+          case 'edit':
+            restrictMode(['edit', 'preview']);
+            break;
+          case 'preview':
+            restrictMode(['preview', 'edit']);
+            break;
+          default:
+            restrictMode(['auto']);
+            break;
+        }
       }
     }
-
     render() {
       const {
         name,
         attributes,
-        setAttributes
+        setAttributes,
+        clientId
       } = this.props;
-      const {
+      const blockType = getBlockType(name);
+      const forcePreview = isBlockInQueryLoop(clientId) || isSiteEditor() || isiFramedMobileDevicePreview() || isEditingTemplate();
+      let {
         mode
       } = attributes;
-      const blockType = getBlockType(name); // Show toggle only for edit/preview modes.
+      if (forcePreview) {
+        mode = 'preview';
+      }
 
+      // Show toggle only for edit/preview modes and for blocks not in a query loop/FSE.
       let showToggle = blockType.supports.mode;
-
-      if (mode === 'auto') {
+      if (mode === 'auto' || forcePreview) {
         showToggle = false;
-      } // Configure toggle variables.
+      }
 
-
+      // Configure toggle variables.
       const toggleText = mode === 'preview' ? acf.__('Switch to Edit') : acf.__('Switch to Preview');
       const toggleIcon = mode === 'preview' ? 'edit' : 'welcome-view-site';
-
       function toggleMode() {
         setAttributes({
           mode: mode === 'preview' ? 'edit' : 'preview'
         });
-      } // Return template.
+      }
 
-
-      return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(Fragment, null, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockControls, null, showToggle && (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(ToolbarGroup, null, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(ToolbarButton, {
+      // Return template.
+      return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(Fragment, null, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockControls, null, showToggle && (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(ToolbarGroup, null, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(ToolbarButton, {
         className: "components-icon-button components-toolbar__control",
         label: toggleText,
         icon: toggleIcon,
         onClick: toggleMode
-      }))), (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(InspectorControls, null, mode === 'preview' && (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
+      }))), (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(InspectorControls, null, mode === 'preview' && (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
         className: "acf-block-component acf-block-panel"
-      }, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockForm, this.props))), (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockBody, this.props));
+      }, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockForm, _objectSpread({}, this.props)))), (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockBody, _objectSpread({}, this.props)));
     }
-
   }
+
   /**
    * The BlockBody functional component.
    *
    * @date	19/2/19
    * @since	5.7.12
    */
-
-
   function _BlockBody(props) {
     const {
       attributes,
-      isSelected
+      isSelected,
+      name
     } = props;
     const {
       mode
     } = attributes;
-    return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", useBlockProps(), (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
-      className: "acf-block-component acf-block-body"
-    }, mode === 'auto' && isSelected ? (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockForm, props) : mode === 'auto' && !isSelected ? (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockPreview, props) : mode === 'preview' ? (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockPreview, props) : (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockForm, props)));
-  } // Append blockIndex to component props.
+    let showForm = true;
+    let additionalClasses = 'acf-block-component acf-block-body';
+    if (mode === 'auto' && !isSelected || mode === 'preview') {
+      additionalClasses += ' acf-block-preview';
+      showForm = false;
+    }
+    if (getBlockVersion(name) > 1) {
+      return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", _objectSpread({}, useBlockProps({
+        className: additionalClasses
+      })), showForm ? (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockForm, _objectSpread({}, props)) : (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockPreview, _objectSpread({}, props)));
+    } else {
+      return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", _objectSpread({}, useBlockProps()), (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
+        className: "acf-block-component acf-block-body"
+      }, showForm ? (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockForm, _objectSpread({}, props)) : (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockPreview, _objectSpread({}, props))));
+    }
+  }
 
-
+  // Append blockIndex to component props.
   const BlockBody = withSelect((select, ownProps) => {
     const {
       clientId
-    } = ownProps; // Use optional rootClientId to allow discoverability of child blocks.
-
+    } = ownProps;
+    // Use optional rootClientId to allow discoverability of child blocks.
     const rootClientId = select('core/block-editor').getBlockRootClientId(clientId);
     const index = select('core/block-editor').getBlockIndex(clientId, rootClientId);
     return {
       index
     };
   })(_BlockBody);
+
   /**
    * A react component to append HTMl.
    *
@@ -719,17 +861,16 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	string children The html to insert.
    * @return	void
    */
-
   class Div extends Component {
     render() {
-      return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
+      return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
         dangerouslySetInnerHTML: {
           __html: this.props.children
         }
       });
     }
-
   }
+
   /**
    * A react Component for inline scripts.
    *
@@ -742,31 +883,26 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	type Var Description.
    * @return	type Description.
    */
-
-
   class Script extends Component {
     render() {
-      return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
+      return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
         ref: el => this.el = el
       });
     }
-
     setHTML(html) {
       $(this.el).html(`<script>${html}</script>`);
     }
-
     componentDidUpdate() {
       this.setHTML(this.props.children);
     }
-
     componentDidMount() {
       this.setHTML(this.props.children);
     }
+  }
 
-  } // Data storage for DynamicHTML components.
-
-
+  // Data storage for DynamicHTML components.
   const store = {};
+
   /**
    * DynamicHTML Class.
    *
@@ -778,189 +914,196 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	void
    * @return	void
    */
-
   class DynamicHTML extends Component {
     constructor(props) {
-      super(props); // Bind callbacks.
+      super(props);
 
-      this.setRef = this.setRef.bind(this); // Define default props and call setup().
+      // Bind callbacks.
+      this.setRef = this.setRef.bind(this);
 
+      // Define default props and call setup().
       this.id = '';
       this.el = false;
       this.subscribed = true;
       this.renderMethod = 'jQuery';
-      this.setup(props); // Load state.
+      this.setup(props);
 
+      // Load state.
       this.loadState();
     }
-
-    setup(props) {// Do nothing.
+    setup(props) {
+      // Do nothing.
     }
-
-    fetch() {// Do nothing.
+    fetch() {
+      // Do nothing.
     }
-
-    maybePreload(blockId) {
-      if (this.state.html === undefined) {
+    maybePreload(blockId, clientId, form) {
+      if (this.state.html === undefined && !isBlockInQueryLoop(this.props.clientId)) {
         const preloadedBlocks = acf.get('preloadedBlocks');
-
+        const modeText = form ? 'form' : 'preview';
         if (preloadedBlocks && preloadedBlocks[blockId]) {
-          // Set HTML to the preloaded version.
-          this.setHtml(preloadedBlocks[blockId]); // Delete the preloaded HTML so we don't try to load it again.
+          // Ensure we only preload the correct block state (form or preview).
+          if (form && !preloadedBlocks[blockId].form || !form && preloadedBlocks[blockId].form) return false;
 
-          delete preloadedBlocks[blockId];
-          acf.set('preloadedBlocks', preloadedBlocks);
-          return true;
+          // Set HTML to the preloaded version.
+          return preloadedBlocks[blockId].html.replaceAll(blockId, clientId);
         }
       }
-
       return false;
     }
-
     loadState() {
       this.state = store[this.id] || {};
     }
-
     setState(state) {
-      store[this.id] = _objectSpread(_objectSpread({}, this.state), state); // Update component state if subscribed.
-      // - Allows AJAX callback to update store without modifying state of an unmounted component.
+      store[this.id] = _objectSpread(_objectSpread({}, this.state), state);
 
+      // Update component state if subscribed.
+      // - Allows AJAX callback to update store without modifying state of an unmounted component.
       if (this.subscribed) {
         super.setState(state);
       }
     }
-
     setHtml(html) {
-      html = html ? html.trim() : ''; // Bail early if html has not changed.
+      html = html ? html.trim() : '';
 
+      // Bail early if html has not changed.
       if (html === this.state.html) {
         return;
-      } // Update state.
+      }
 
-
+      // Update state.
       const state = {
         html
       };
-
       if (this.renderMethod === 'jsx') {
-        state.jsx = acf.parseJSX(html);
+        state.jsx = acf.parseJSX(html, getBlockVersion(this.props.name));
+
+        // Handle templates which don't contain any valid JSX parsable elements.
+        if (!state.jsx) {
+          console.warn('Your ACF block template contains no valid HTML elements. Appending a empty div to prevent React JS errors.');
+          state.html += '<div></div>';
+          state.jsx = acf.parseJSX(state.html, getBlockVersion(this.props.name));
+        }
+
+        // If we've got an object (as an array) find the first valid React ref.
+        if (Array.isArray(state.jsx)) {
+          let refElement = state.jsx.find(element => React.isValidElement(element));
+          state.ref = refElement.ref;
+        } else {
+          state.ref = state.jsx.ref;
+        }
         state.$el = $(this.el);
       } else {
         state.$el = $(html);
       }
-
       this.setState(state);
     }
-
     setRef(el) {
       this.el = el;
     }
-
     render() {
       // Render JSX.
       if (this.state.jsx) {
-        return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
-          ref: this.setRef
-        }, this.state.jsx);
-      } // Return HTML.
+        // If we're a v2+ block, use the jsx element itself as our ref.
+        if (getBlockVersion(this.props.name) > 1) {
+          this.setRef(this.state.jsx);
+          return this.state.jsx;
+        } else {
+          return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
+            ref: this.setRef
+          }, this.state.jsx);
+        }
+      }
 
-
-      return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
+      // Return HTML.
+      return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)("div", {
         ref: this.setRef
-      }, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(Placeholder, null, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(Spinner, null)));
+      }, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(Placeholder, null, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(Spinner, null)));
     }
-
-    shouldComponentUpdate(_ref6, _ref7) {
-      let {
-        index
-      } = _ref6;
-      let {
-        html
-      } = _ref7;
-
+    shouldComponentUpdate({
+      index
+    }, {
+      html
+    }) {
       if (index !== this.props.index) {
         this.componentWillMove();
       }
-
       return html !== this.state.html;
     }
-
     display(context) {
       // This method is called after setting new HTML and the Component render.
       // The jQuery render method simply needs to move $el into place.
       if (this.renderMethod === 'jQuery') {
         const $el = this.state.$el;
         const $prevParent = $el.parent();
-        const $thisParent = $(this.el); // Move $el into place.
+        const $thisParent = $(this.el);
 
-        $thisParent.html($el); // Special case for reusable blocks.
+        // Move $el into place.
+        $thisParent.html($el);
+
+        // Special case for reusable blocks.
         // Multiple instances of the same reusable block share the same block id.
         // This causes all instances to share the same state (cool), which unfortunately
         // pulls $el back and forth between the last rendered reusable block.
         // This simple fix leaves a "clone" behind :)
-
         if ($prevParent.length && $prevParent[0] !== $thisParent[0]) {
           $prevParent.html($el.clone());
         }
-      } // Call context specific method.
+      }
 
-
+      // Call context specific method.
       switch (context) {
         case 'append':
           this.componentDidAppend();
           break;
-
         case 'remount':
           this.componentDidRemount();
           break;
       }
     }
-
     componentDidMount() {
       // Fetch on first load.
       if (this.state.html === undefined) {
-        //console.log('componentDidMount', this.id);
-        this.fetch(); // Or remount existing HTML.
+        this.fetch();
+
+        // Or remount existing HTML.
       } else {
         this.display('remount');
       }
     }
-
     componentDidUpdate(prevProps, prevState) {
       // HTML has changed.
       this.display('append');
     }
-
     componentDidAppend() {
       acf.doAction('append', this.state.$el);
     }
-
     componentWillUnmount() {
-      acf.doAction('unmount', this.state.$el); // Unsubscribe this component from state.
+      acf.doAction('unmount', this.state.$el);
 
+      // Unsubscribe this component from state.
       this.subscribed = false;
     }
-
     componentDidRemount() {
-      this.subscribed = true; // Use setTimeout to avoid incorrect timing of events.
+      this.subscribed = true;
+
+      // Use setTimeout to avoid incorrect timing of events.
       // React will unmount and mount components in DOM order.
       // This means a new component can be mounted before an old one is unmounted.
       // ACF shares $el across new/old components which is un-React-like.
       // This timout ensures that unmounting occurs before remounting.
-
       setTimeout(() => {
         acf.doAction('remount', this.state.$el);
       });
     }
-
     componentWillMove() {
       acf.doAction('unmount', this.state.$el);
       setTimeout(() => {
         acf.doAction('remount', this.state.$el);
       });
     }
-
   }
+
   /**
    * BlockForm Class.
    *
@@ -972,58 +1115,70 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	string id the block id.
    * @return	void
    */
-
-
   class BlockForm extends DynamicHTML {
-    setup(_ref8) {
-      let {
-        attributes
-      } = _ref8;
-      this.id = `BlockForm-${attributes.id}`;
+    setup({
+      clientId
+    }) {
+      this.id = `BlockForm-${clientId}`;
     }
-
     fetch() {
       // Extract props.
       const {
-        attributes
-      } = this.props; // Try preloaded data first.
+        attributes,
+        context,
+        clientId
+      } = this.props;
+      const hash = createBlockAttributesHash(attributes, context);
 
-      const preloaded = this.maybePreload(attributes.id);
-
+      // Try preloaded data first.
+      const preloaded = this.maybePreload(hash, clientId, true);
       if (preloaded) {
+        this.setHtml(preloaded);
         return;
-      } // Request AJAX and update HTML on complete.
+      }
 
-
+      // Request AJAX and update HTML on complete.
       fetchBlock({
         attributes,
+        context,
+        clientId,
         query: {
           form: true
         }
-      }).done(_ref9 => {
-        let {
-          data
-        } = _ref9;
-        this.setHtml(data.form);
+      }).done(({
+        data
+      }) => {
+        this.setHtml(data.form.replaceAll(data.clientId, clientId));
       });
     }
+    componentDidRemount() {
+      super.componentDidRemount();
+      const {
+        $el
+      } = this.state;
 
+      // Make sure our on append events are registered.
+      if ($el.data('acf-events-added') !== true) {
+        this.componentDidAppend();
+      }
+    }
     componentDidAppend() {
-      super.componentDidAppend(); // Extract props.
+      super.componentDidAppend();
 
+      // Extract props.
       const {
         attributes,
-        setAttributes
+        setAttributes,
+        clientId
       } = this.props;
       const props = this.props;
       const {
         $el
-      } = this.state; // Callback for updating block data.
+      } = this.state;
 
-      function serializeData() {
-        let silent = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
-        const data = acf.serialize($el, `acf-${attributes.id}`); //console.log('serializeData', props, data);
-
+      // Callback for updating block data.
+      function serializeData(silent = false) {
+        const data = acf.serialize($el, `acf-${clientId}`);
         if (silent) {
           attributes.data = data;
         } else {
@@ -1031,22 +1186,26 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
             data
           });
         }
-      } // Add events.
+      }
 
-
+      // Add events.
       let timeout = false;
       $el.on('change keyup', () => {
         clearTimeout(timeout);
         timeout = setTimeout(serializeData, 300);
-      }); // Ensure newly added block is saved with data.
-      // Do it silently to avoid triggering a preview render.
+      });
 
+      // Log initialization for remount check on the persistent element.
+      $el.data('acf-events-added', true);
+
+      // Ensure newly added block is saved with data.
+      // Do it silently to avoid triggering a preview render.
       if (!attributes.data) {
         serializeData(true);
       }
     }
-
   }
+
   /**
    * BlockPreview Class.
    *
@@ -1058,129 +1217,160 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	string id the block id.
    * @return	void
    */
-
-
   class BlockPreview extends DynamicHTML {
-    setup(_ref10) {
-      let {
-        attributes,
-        name
-      } = _ref10;
-      this.id = `BlockPreview-${attributes.id}`;
+    setup({
+      clientId,
+      name
+    }) {
       const blockType = getBlockType(name);
+      const contextPostId = acf.isget(this.props, 'context', 'postId');
+      this.id = `BlockPreview-${clientId}`;
 
+      // Apply the contextPostId to the ID if set to stop query loop ID duplication.
+      if (contextPostId) {
+        this.id = `BlockPreview-${clientId}-${contextPostId}`;
+      }
       if (blockType.supports.jsx) {
         this.renderMethod = 'jsx';
-      } //console.log('setup', this.id);
-
+      }
     }
-
-    fetch() {
-      let args = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+    fetch(args = {}) {
       const {
         attributes = this.props.attributes,
+        clientId = this.props.clientId,
+        context = this.props.context,
         delay = 0
-      } = args; // Remember attributes used to fetch HTML.
+      } = args;
+      const {
+        name
+      } = this.props;
 
+      // Remember attributes used to fetch HTML.
       this.setState({
-        prevAttributes: attributes
-      }); // Try preloaded data first.
+        prevAttributes: attributes,
+        prevContext: context
+      });
+      const hash = createBlockAttributesHash(attributes, context);
 
-      const preloaded = this.maybePreload(attributes.id);
-
+      // Try preloaded data first.
+      let preloaded = this.maybePreload(hash, clientId, false);
       if (preloaded) {
+        if (getBlockVersion(name) == 1) {
+          preloaded = '<div class="acf-block-preview">' + preloaded + '</div>';
+        }
+        this.setHtml(preloaded);
         return;
-      } // Request AJAX and update HTML on complete.
+      }
 
-
+      // Request AJAX and update HTML on complete.
       fetchBlock({
         attributes,
+        context,
+        clientId,
         query: {
           preview: true
         },
         delay
-      }).done(_ref11 => {
-        let {
-          data
-        } = _ref11;
-        this.setHtml(data.preview);
+      }).done(({
+        data
+      }) => {
+        let replaceHtml = data.preview.replaceAll(data.clientId, clientId);
+        if (getBlockVersion(name) == 1) {
+          replaceHtml = '<div class="acf-block-preview">' + replaceHtml + '</div>';
+        }
+        this.setHtml(replaceHtml);
       });
     }
-
     componentDidAppend() {
-      super.componentDidAppend(); // Extract props.
-
-      const {
-        attributes
-      } = this.props;
-      const {
-        $el
-      } = this.state; // Generate action friendly type.
-
-      const type = attributes.name.replace('acf/', ''); // Do action.
-
-      acf.doAction('render_block_preview', $el, attributes);
-      acf.doAction(`render_block_preview/type=${type}`, $el, attributes);
+      super.componentDidAppend();
+      this.renderBlockPreviewEvent();
     }
-
     shouldComponentUpdate(nextProps, nextState) {
       const nextAttributes = nextProps.attributes;
-      const thisAttributes = this.props.attributes; // Update preview if block data has changed.
+      const thisAttributes = this.props.attributes;
 
-      if (!compareObjects(nextAttributes, thisAttributes)) {
-        let delay = 0; // Delay fetch when editing className or anchor to simulate conscistent logic to custom fields.
+      // Update preview if block data has changed.
+      if (!compareObjects(nextAttributes, thisAttributes) || !compareObjects(nextProps.context, this.props.context)) {
+        let delay = 0;
 
+        // Delay fetch when editing className or anchor to simulate consistent logic to custom fields.
         if (nextAttributes.className !== thisAttributes.className) {
           delay = 300;
         }
-
         if (nextAttributes.anchor !== thisAttributes.anchor) {
           delay = 300;
         }
-
         this.fetch({
           attributes: nextAttributes,
+          context: nextProps.context,
           delay
         });
       }
-
       return super.shouldComponentUpdate(nextProps, nextState);
     }
+    renderBlockPreviewEvent() {
+      // Extract props.
+      const {
+        attributes,
+        name
+      } = this.props;
+      const {
+        $el,
+        ref
+      } = this.state;
+      var blockElement;
 
+      // Generate action friendly type.
+      const type = attributes.name.replace('acf/', '');
+      if (ref && ref.current) {
+        // We've got a react ref from a JSX container. Use the parent as the blockElement
+        blockElement = $(ref.current).parent();
+      } else if (getBlockVersion(name) == 1) {
+        blockElement = $el;
+      } else {
+        blockElement = $el.parents('.acf-block-preview');
+      }
+
+      // Do action.
+      acf.doAction('render_block_preview', blockElement, attributes);
+      acf.doAction(`render_block_preview/type=${type}`, blockElement, attributes);
+    }
     componentDidRemount() {
-      super.componentDidRemount(); // Update preview if data has changed since last render (changing from "edit" to "preview").
+      super.componentDidRemount();
 
-      if (!compareObjects(this.state.prevAttributes, this.props.attributes)) {
-        //console.log('componentDidRemount', this.id);
+      // Update preview if data has changed since last render (changing from "edit" to "preview").
+      if (!compareObjects(this.state.prevAttributes, this.props.attributes) || !compareObjects(this.state.prevContext, this.props.context)) {
         this.fetch();
       }
-    }
 
+      // Fire the block preview event so blocks can reinit JS elements.
+      // React reusing DOM elements covers any potential race condition from the above fetch.
+      this.renderBlockPreviewEvent();
+    }
   }
+
   /**
    * Initializes ACF Blocks logic and registration.
    *
    * @since 5.9.0
    */
-
-
   function initialize() {
     // Add support for WordPress versions before 5.2.
     if (!wp.blockEditor) {
       wp.blockEditor = wp.editor;
-    } // Register block types.
+    }
 
-
+    // Register block types.
     const blockTypes = acf.get('blockTypes');
-
     if (blockTypes) {
       blockTypes.map(registerBlockType);
     }
-  } // Run the initialize callback during the "prepare" action.
+  }
+
+  // Run the initialize callback during the "prepare" action.
   // This ensures that all localized data is available and that blocks are registered before the WP editor has been instantiated.
-
-
   acf.addAction('prepare', initialize);
+
   /**
    * Returns a valid vertical alignment.
    *
@@ -1190,12 +1380,12 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	string align A vertical alignment.
    * @return	string
    */
-
   function validateVerticalAlignment(align) {
     const ALIGNMENTS = ['top', 'center', 'bottom'];
     const DEFAULT = 'top';
     return ALIGNMENTS.includes(align) ? align : DEFAULT;
   }
+
   /**
    * Returns a valid horizontal alignment.
    *
@@ -1205,13 +1395,12 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	string align A horizontal alignment.
    * @return	string
    */
-
-
   function validateHorizontalAlignment(align) {
     const ALIGNMENTS = ['left', 'center', 'right'];
     const DEFAULT = acf.get('rtl') ? 'right' : 'left';
     return ALIGNMENTS.includes(align) ? align : DEFAULT;
   }
+
   /**
    * Returns a valid matrix alignment.
    *
@@ -1223,46 +1412,17 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	string align A matrix alignment.
    * @return	string
    */
-
-
   function validateMatrixAlignment(align) {
     const DEFAULT = 'center center';
-
     if (align) {
       const [y, x] = align.split(' ');
       return `${validateVerticalAlignment(y)} ${validateHorizontalAlignment(x)}`;
     }
-
     return DEFAULT;
-  } // Dependencies.
-
-
-  const {
-    AlignmentToolbar,
-    BlockVerticalAlignmentToolbar
-  } = wp.blockEditor;
-  const BlockAlignmentMatrixToolbar = wp.blockEditor.__experimentalBlockAlignmentMatrixToolbar || wp.blockEditor.BlockAlignmentMatrixToolbar; // Gutenberg v10.x begins transition from Toolbar components to Control components.
-
-  const BlockAlignmentMatrixControl = wp.blockEditor.__experimentalBlockAlignmentMatrixControl || wp.blockEditor.BlockAlignmentMatrixControl;
-  const BlockFullHeightAlignmentControl = wp.blockEditor.__experimentalBlockFullHeightAligmentControl || wp.blockEditor.__experimentalBlockFullHeightAlignmentControl || wp.blockEditor.BlockFullHeightAlignmentControl;
-  /**
-   * Appends extra attributes for block types that support align_content.
-   *
-   * @date	08/07/2020
-   * @since	5.9.0
-   *
-   * @param	object attributes The block type attributes.
-   * @return	object
-   */
-
-  function withAlignContentAttributes(attributes) {
-    attributes.align_content = {
-      type: 'string'
-    };
-    return attributes;
   }
+
   /**
-   * A higher order component adding align_content editing functionality.
+   * A higher order component adding alignContent editing functionality.
    *
    * @date	08/07/2020
    * @since	5.9.0
@@ -1271,35 +1431,32 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	object blockType The block type settings.
    * @return	component
    */
-
-
   function withAlignContentComponent(OriginalBlockEdit, blockType) {
     // Determine alignment vars
-    let type = blockType.supports.align_content;
+    let type = blockType.supports.align_content || blockType.supports.alignContent;
     let AlignmentComponent;
     let validateAlignment;
-
     switch (type) {
       case 'matrix':
         AlignmentComponent = BlockAlignmentMatrixControl || BlockAlignmentMatrixToolbar;
         validateAlignment = validateMatrixAlignment;
         break;
-
       default:
         AlignmentComponent = BlockVerticalAlignmentToolbar;
         validateAlignment = validateVerticalAlignment;
         break;
-    } // Ensure alignment component exists.
+    }
 
-
+    // Ensure alignment component exists.
     if (AlignmentComponent === undefined) {
       console.warn(`The "${type}" alignment component was not found.`);
       return OriginalBlockEdit;
-    } // Ensure correct block attribute data is sent in intial preview AJAX request.
+    }
 
+    // Ensure correct block attribute data is sent in intial preview AJAX request.
+    blockType.alignContent = validateAlignment(blockType.alignContent);
 
-    blockType.align_content = validateAlignment(blockType.align_content); // Return wrapped component.
-
+    // Return wrapped component.
     return class WrappedBlockEdit extends Component {
       render() {
         const {
@@ -1307,45 +1464,26 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
           setAttributes
         } = this.props;
         const {
-          align_content
+          alignContent
         } = attributes;
-
-        function onChangeAlignContent(align_content) {
+        function onChangeAlignContent(alignContent) {
           setAttributes({
-            align_content: validateAlignment(align_content)
+            alignContent: validateAlignment(alignContent)
           });
         }
-
-        return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(Fragment, null, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockControls, {
+        return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(Fragment, null, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockControls, {
           group: "block"
-        }, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(AlignmentComponent, {
+        }, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(AlignmentComponent, {
           label: acf.__('Change content alignment'),
-          value: validateAlignment(align_content),
+          value: validateAlignment(alignContent),
           onChange: onChangeAlignContent
-        })), (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(OriginalBlockEdit, this.props));
+        })), (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(OriginalBlockEdit, _objectSpread({}, this.props)));
       }
-
     };
   }
-  /**
-   * Appends extra attributes for block types that support align_text.
-   *
-   * @date	08/07/2020
-   * @since	5.9.0
-   *
-   * @param	object attributes The block type attributes.
-   * @return	object
-   */
 
-
-  function withAlignTextAttributes(attributes) {
-    attributes.align_text = {
-      type: 'string'
-    };
-    return attributes;
-  }
   /**
-   * A higher order component adding align_text editing functionality.
+   * A higher order component adding alignText editing functionality.
    *
    * @date	08/07/2020
    * @since	5.9.0
@@ -1354,13 +1492,13 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	object blockType The block type settings.
    * @return	component
    */
-
-
   function withAlignTextComponent(OriginalBlockEdit, blockType) {
-    const validateAlignment = validateHorizontalAlignment; // Ensure correct block attribute data is sent in intial preview AJAX request.
+    const validateAlignment = validateHorizontalAlignment;
 
-    blockType.align_text = validateAlignment(blockType.align_text); // Return wrapped component.
+    // Ensure correct block attribute data is sent in intial preview AJAX request.
+    blockType.alignText = validateAlignment(blockType.alignText);
 
+    // Return wrapped component.
     return class WrappedBlockEdit extends Component {
       render() {
         const {
@@ -1368,42 +1506,23 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
           setAttributes
         } = this.props;
         const {
-          align_text
+          alignText
         } = attributes;
-
-        function onChangeAlignText(align_text) {
+        function onChangeAlignText(alignText) {
           setAttributes({
-            align_text: validateAlignment(align_text)
+            alignText: validateAlignment(alignText)
           });
         }
-
-        return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(Fragment, null, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockControls, {
+        return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(Fragment, null, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockControls, {
           group: "block"
-        }, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(AlignmentToolbar, {
-          value: validateAlignment(align_text),
+        }, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(AlignmentToolbar, {
+          value: validateAlignment(alignText),
           onChange: onChangeAlignText
-        })), (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(OriginalBlockEdit, this.props));
+        })), (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(OriginalBlockEdit, _objectSpread({}, this.props)));
       }
-
     };
   }
-  /**
-   * Appends extra attributes for block types that support full height.
-   *
-   * @date	08/07/2020
-   * @since	5.9.0
-   *
-   * @param	object attributes The block type attributes.
-   * @return	object
-   */
 
-
-  function withFullHeightAttributes(attributes) {
-    attributes.full_height = {
-      type: 'boolean'
-    };
-    return attributes;
-  }
   /**
    * A higher order component adding full height support.
    *
@@ -1414,11 +1533,10 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
    * @param	object blockType The block type settings.
    * @return	component
    */
-
-
   function withFullHeightComponent(OriginalBlockEdit, blockType) {
-    if (!BlockFullHeightAlignmentControl) return OriginalBlockEdit; // Return wrapped component.
+    if (!BlockFullHeightAlignmentControl) return OriginalBlockEdit;
 
+    // Return wrapped component.
     return class WrappedBlockEdit extends Component {
       render() {
         const {
@@ -1426,24 +1544,53 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
           setAttributes
         } = this.props;
         const {
-          full_height
+          fullHeight
         } = attributes;
-
-        function onToggleFullHeight(full_height) {
+        function onToggleFullHeight(fullHeight) {
           setAttributes({
-            full_height
+            fullHeight
           });
         }
-
-        return (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(Fragment, null, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockControls, {
+        return (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(Fragment, null, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockControls, {
           group: "block"
-        }, (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockFullHeightAlignmentControl, {
-          isActive: full_height,
+        }, (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(BlockFullHeightAlignmentControl, {
+          isActive: fullHeight,
           onToggle: onToggleFullHeight
-        })), (0,_wordpress_element__WEBPACK_IMPORTED_MODULE_1__.createElement)(OriginalBlockEdit, this.props));
+        })), (0,react__WEBPACK_IMPORTED_MODULE_1__.createElement)(OriginalBlockEdit, _objectSpread({}, this.props)));
       }
-
     };
+  }
+
+  /**
+   * Appends a backwards compatibility attribute for conversion.
+   *
+   * @since	6.0
+   *
+   * @param	object attributes The block type attributes.
+   * @return	object
+   */
+  function addBackCompatAttribute(attributes, new_attribute, type) {
+    attributes[new_attribute] = {
+      type: type
+    };
+    return attributes;
+  }
+
+  /**
+   * Create a block hash from attributes
+   *
+   * @since 6.0
+   *
+   * @param object attributes The block type attributes.
+   * @param object context The current block context object.
+   * @return string
+   */
+  function createBlockAttributesHash(attributes, context) {
+    attributes['_acf_context'] = context;
+    return md5(JSON.stringify(Object.keys(attributes).sort().reduce((acc, currValue) => {
+      acc[currValue] = attributes[currValue];
+      return acc;
+    }, {})));
   }
 })(jQuery);
 
@@ -1453,7 +1600,7 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 /*!****************************************************************************!*\
   !*** ./src/advanced-custom-fields-pro/assets/src/js/pro/_acf-jsx-names.js ***!
   \****************************************************************************/
-/***/ (function() {
+/***/ (() => {
 
 (function ($, undefined) {
   acf.jsxNameReplacements = {
@@ -1551,6 +1698,7 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
     fontvariant: 'fontVariant',
     fontweight: 'fontWeight',
     for: 'htmlFor',
+    foreignobject: 'foreignObject',
     formaction: 'formAction',
     formenctype: 'formEncType',
     formmethod: 'formMethod',
@@ -1762,103 +1910,352 @@ function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { va
 
 /***/ }),
 
-/***/ "./node_modules/object-assign/index.js":
-/*!*********************************************!*\
-  !*** ./node_modules/object-assign/index.js ***!
-  \*********************************************/
-/***/ (function(module) {
+/***/ "./node_modules/charenc/charenc.js":
+/*!*****************************************!*\
+  !*** ./node_modules/charenc/charenc.js ***!
+  \*****************************************/
+/***/ ((module) => {
 
-"use strict";
-/*
-object-assign
-(c) Sindre Sorhus
-@license MIT
-*/
+var charenc = {
+  // UTF-8 encoding
+  utf8: {
+    // Convert a string to a byte array
+    stringToBytes: function(str) {
+      return charenc.bin.stringToBytes(unescape(encodeURIComponent(str)));
+    },
 
+    // Convert a byte array to a string
+    bytesToString: function(bytes) {
+      return decodeURIComponent(escape(charenc.bin.bytesToString(bytes)));
+    }
+  },
 
-/* eslint-disable no-unused-vars */
-var getOwnPropertySymbols = Object.getOwnPropertySymbols;
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-var propIsEnumerable = Object.prototype.propertyIsEnumerable;
+  // Binary encoding
+  bin: {
+    // Convert a string to a byte array
+    stringToBytes: function(str) {
+      for (var bytes = [], i = 0; i < str.length; i++)
+        bytes.push(str.charCodeAt(i) & 0xFF);
+      return bytes;
+    },
 
-function toObject(val) {
-	if (val === null || val === undefined) {
-		throw new TypeError('Object.assign cannot be called with null or undefined');
-	}
-
-	return Object(val);
-}
-
-function shouldUseNative() {
-	try {
-		if (!Object.assign) {
-			return false;
-		}
-
-		// Detect buggy property enumeration order in older V8 versions.
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
-		var test1 = new String('abc');  // eslint-disable-line no-new-wrappers
-		test1[5] = 'de';
-		if (Object.getOwnPropertyNames(test1)[0] === '5') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test2 = {};
-		for (var i = 0; i < 10; i++) {
-			test2['_' + String.fromCharCode(i)] = i;
-		}
-		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
-			return test2[n];
-		});
-		if (order2.join('') !== '0123456789') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test3 = {};
-		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
-			test3[letter] = letter;
-		});
-		if (Object.keys(Object.assign({}, test3)).join('') !==
-				'abcdefghijklmnopqrst') {
-			return false;
-		}
-
-		return true;
-	} catch (err) {
-		// We don't expect any of the above to throw, but better to be safe.
-		return false;
-	}
-}
-
-module.exports = shouldUseNative() ? Object.assign : function (target, source) {
-	var from;
-	var to = toObject(target);
-	var symbols;
-
-	for (var s = 1; s < arguments.length; s++) {
-		from = Object(arguments[s]);
-
-		for (var key in from) {
-			if (hasOwnProperty.call(from, key)) {
-				to[key] = from[key];
-			}
-		}
-
-		if (getOwnPropertySymbols) {
-			symbols = getOwnPropertySymbols(from);
-			for (var i = 0; i < symbols.length; i++) {
-				if (propIsEnumerable.call(from, symbols[i])) {
-					to[symbols[i]] = from[symbols[i]];
-				}
-			}
-		}
-	}
-
-	return to;
+    // Convert a byte array to a string
+    bytesToString: function(bytes) {
+      for (var str = [], i = 0; i < bytes.length; i++)
+        str.push(String.fromCharCode(bytes[i]));
+      return str.join('');
+    }
+  }
 };
+
+module.exports = charenc;
+
+
+/***/ }),
+
+/***/ "./node_modules/crypt/crypt.js":
+/*!*************************************!*\
+  !*** ./node_modules/crypt/crypt.js ***!
+  \*************************************/
+/***/ ((module) => {
+
+(function() {
+  var base64map
+      = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+
+  crypt = {
+    // Bit-wise rotation left
+    rotl: function(n, b) {
+      return (n << b) | (n >>> (32 - b));
+    },
+
+    // Bit-wise rotation right
+    rotr: function(n, b) {
+      return (n << (32 - b)) | (n >>> b);
+    },
+
+    // Swap big-endian to little-endian and vice versa
+    endian: function(n) {
+      // If number given, swap endian
+      if (n.constructor == Number) {
+        return crypt.rotl(n, 8) & 0x00FF00FF | crypt.rotl(n, 24) & 0xFF00FF00;
+      }
+
+      // Else, assume array and swap all items
+      for (var i = 0; i < n.length; i++)
+        n[i] = crypt.endian(n[i]);
+      return n;
+    },
+
+    // Generate an array of any length of random bytes
+    randomBytes: function(n) {
+      for (var bytes = []; n > 0; n--)
+        bytes.push(Math.floor(Math.random() * 256));
+      return bytes;
+    },
+
+    // Convert a byte array to big-endian 32-bit words
+    bytesToWords: function(bytes) {
+      for (var words = [], i = 0, b = 0; i < bytes.length; i++, b += 8)
+        words[b >>> 5] |= bytes[i] << (24 - b % 32);
+      return words;
+    },
+
+    // Convert big-endian 32-bit words to a byte array
+    wordsToBytes: function(words) {
+      for (var bytes = [], b = 0; b < words.length * 32; b += 8)
+        bytes.push((words[b >>> 5] >>> (24 - b % 32)) & 0xFF);
+      return bytes;
+    },
+
+    // Convert a byte array to a hex string
+    bytesToHex: function(bytes) {
+      for (var hex = [], i = 0; i < bytes.length; i++) {
+        hex.push((bytes[i] >>> 4).toString(16));
+        hex.push((bytes[i] & 0xF).toString(16));
+      }
+      return hex.join('');
+    },
+
+    // Convert a hex string to a byte array
+    hexToBytes: function(hex) {
+      for (var bytes = [], c = 0; c < hex.length; c += 2)
+        bytes.push(parseInt(hex.substr(c, 2), 16));
+      return bytes;
+    },
+
+    // Convert a byte array to a base-64 string
+    bytesToBase64: function(bytes) {
+      for (var base64 = [], i = 0; i < bytes.length; i += 3) {
+        var triplet = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+        for (var j = 0; j < 4; j++)
+          if (i * 8 + j * 6 <= bytes.length * 8)
+            base64.push(base64map.charAt((triplet >>> 6 * (3 - j)) & 0x3F));
+          else
+            base64.push('=');
+      }
+      return base64.join('');
+    },
+
+    // Convert a base-64 string to a byte array
+    base64ToBytes: function(base64) {
+      // Remove non-base-64 characters
+      base64 = base64.replace(/[^A-Z0-9+\/]/ig, '');
+
+      for (var bytes = [], i = 0, imod4 = 0; i < base64.length;
+          imod4 = ++i % 4) {
+        if (imod4 == 0) continue;
+        bytes.push(((base64map.indexOf(base64.charAt(i - 1))
+            & (Math.pow(2, -2 * imod4 + 8) - 1)) << (imod4 * 2))
+            | (base64map.indexOf(base64.charAt(i)) >>> (6 - imod4 * 2)));
+      }
+      return bytes;
+    }
+  };
+
+  module.exports = crypt;
+})();
+
+
+/***/ }),
+
+/***/ "./node_modules/is-buffer/index.js":
+/*!*****************************************!*\
+  !*** ./node_modules/is-buffer/index.js ***!
+  \*****************************************/
+/***/ ((module) => {
+
+/*!
+ * Determine if an object is a Buffer
+ *
+ * @author   Feross Aboukhadijeh <https://feross.org>
+ * @license  MIT
+ */
+
+// The _isBuffer check is for Safari 5-7 support, because it's missing
+// Object.prototype.constructor. Remove this eventually
+module.exports = function (obj) {
+  return obj != null && (isBuffer(obj) || isSlowBuffer(obj) || !!obj._isBuffer)
+}
+
+function isBuffer (obj) {
+  return !!obj.constructor && typeof obj.constructor.isBuffer === 'function' && obj.constructor.isBuffer(obj)
+}
+
+// For Node v0.10 support. Remove this eventually.
+function isSlowBuffer (obj) {
+  return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
+}
+
+
+/***/ }),
+
+/***/ "./node_modules/md5/md5.js":
+/*!*********************************!*\
+  !*** ./node_modules/md5/md5.js ***!
+  \*********************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+(function(){
+  var crypt = __webpack_require__(/*! crypt */ "./node_modules/crypt/crypt.js"),
+      utf8 = (__webpack_require__(/*! charenc */ "./node_modules/charenc/charenc.js").utf8),
+      isBuffer = __webpack_require__(/*! is-buffer */ "./node_modules/is-buffer/index.js"),
+      bin = (__webpack_require__(/*! charenc */ "./node_modules/charenc/charenc.js").bin),
+
+  // The core
+  md5 = function (message, options) {
+    // Convert to byte array
+    if (message.constructor == String)
+      if (options && options.encoding === 'binary')
+        message = bin.stringToBytes(message);
+      else
+        message = utf8.stringToBytes(message);
+    else if (isBuffer(message))
+      message = Array.prototype.slice.call(message, 0);
+    else if (!Array.isArray(message) && message.constructor !== Uint8Array)
+      message = message.toString();
+    // else, assume byte array already
+
+    var m = crypt.bytesToWords(message),
+        l = message.length * 8,
+        a =  1732584193,
+        b = -271733879,
+        c = -1732584194,
+        d =  271733878;
+
+    // Swap endian
+    for (var i = 0; i < m.length; i++) {
+      m[i] = ((m[i] <<  8) | (m[i] >>> 24)) & 0x00FF00FF |
+             ((m[i] << 24) | (m[i] >>>  8)) & 0xFF00FF00;
+    }
+
+    // Padding
+    m[l >>> 5] |= 0x80 << (l % 32);
+    m[(((l + 64) >>> 9) << 4) + 14] = l;
+
+    // Method shortcuts
+    var FF = md5._ff,
+        GG = md5._gg,
+        HH = md5._hh,
+        II = md5._ii;
+
+    for (var i = 0; i < m.length; i += 16) {
+
+      var aa = a,
+          bb = b,
+          cc = c,
+          dd = d;
+
+      a = FF(a, b, c, d, m[i+ 0],  7, -680876936);
+      d = FF(d, a, b, c, m[i+ 1], 12, -389564586);
+      c = FF(c, d, a, b, m[i+ 2], 17,  606105819);
+      b = FF(b, c, d, a, m[i+ 3], 22, -1044525330);
+      a = FF(a, b, c, d, m[i+ 4],  7, -176418897);
+      d = FF(d, a, b, c, m[i+ 5], 12,  1200080426);
+      c = FF(c, d, a, b, m[i+ 6], 17, -1473231341);
+      b = FF(b, c, d, a, m[i+ 7], 22, -45705983);
+      a = FF(a, b, c, d, m[i+ 8],  7,  1770035416);
+      d = FF(d, a, b, c, m[i+ 9], 12, -1958414417);
+      c = FF(c, d, a, b, m[i+10], 17, -42063);
+      b = FF(b, c, d, a, m[i+11], 22, -1990404162);
+      a = FF(a, b, c, d, m[i+12],  7,  1804603682);
+      d = FF(d, a, b, c, m[i+13], 12, -40341101);
+      c = FF(c, d, a, b, m[i+14], 17, -1502002290);
+      b = FF(b, c, d, a, m[i+15], 22,  1236535329);
+
+      a = GG(a, b, c, d, m[i+ 1],  5, -165796510);
+      d = GG(d, a, b, c, m[i+ 6],  9, -1069501632);
+      c = GG(c, d, a, b, m[i+11], 14,  643717713);
+      b = GG(b, c, d, a, m[i+ 0], 20, -373897302);
+      a = GG(a, b, c, d, m[i+ 5],  5, -701558691);
+      d = GG(d, a, b, c, m[i+10],  9,  38016083);
+      c = GG(c, d, a, b, m[i+15], 14, -660478335);
+      b = GG(b, c, d, a, m[i+ 4], 20, -405537848);
+      a = GG(a, b, c, d, m[i+ 9],  5,  568446438);
+      d = GG(d, a, b, c, m[i+14],  9, -1019803690);
+      c = GG(c, d, a, b, m[i+ 3], 14, -187363961);
+      b = GG(b, c, d, a, m[i+ 8], 20,  1163531501);
+      a = GG(a, b, c, d, m[i+13],  5, -1444681467);
+      d = GG(d, a, b, c, m[i+ 2],  9, -51403784);
+      c = GG(c, d, a, b, m[i+ 7], 14,  1735328473);
+      b = GG(b, c, d, a, m[i+12], 20, -1926607734);
+
+      a = HH(a, b, c, d, m[i+ 5],  4, -378558);
+      d = HH(d, a, b, c, m[i+ 8], 11, -2022574463);
+      c = HH(c, d, a, b, m[i+11], 16,  1839030562);
+      b = HH(b, c, d, a, m[i+14], 23, -35309556);
+      a = HH(a, b, c, d, m[i+ 1],  4, -1530992060);
+      d = HH(d, a, b, c, m[i+ 4], 11,  1272893353);
+      c = HH(c, d, a, b, m[i+ 7], 16, -155497632);
+      b = HH(b, c, d, a, m[i+10], 23, -1094730640);
+      a = HH(a, b, c, d, m[i+13],  4,  681279174);
+      d = HH(d, a, b, c, m[i+ 0], 11, -358537222);
+      c = HH(c, d, a, b, m[i+ 3], 16, -722521979);
+      b = HH(b, c, d, a, m[i+ 6], 23,  76029189);
+      a = HH(a, b, c, d, m[i+ 9],  4, -640364487);
+      d = HH(d, a, b, c, m[i+12], 11, -421815835);
+      c = HH(c, d, a, b, m[i+15], 16,  530742520);
+      b = HH(b, c, d, a, m[i+ 2], 23, -995338651);
+
+      a = II(a, b, c, d, m[i+ 0],  6, -198630844);
+      d = II(d, a, b, c, m[i+ 7], 10,  1126891415);
+      c = II(c, d, a, b, m[i+14], 15, -1416354905);
+      b = II(b, c, d, a, m[i+ 5], 21, -57434055);
+      a = II(a, b, c, d, m[i+12],  6,  1700485571);
+      d = II(d, a, b, c, m[i+ 3], 10, -1894986606);
+      c = II(c, d, a, b, m[i+10], 15, -1051523);
+      b = II(b, c, d, a, m[i+ 1], 21, -2054922799);
+      a = II(a, b, c, d, m[i+ 8],  6,  1873313359);
+      d = II(d, a, b, c, m[i+15], 10, -30611744);
+      c = II(c, d, a, b, m[i+ 6], 15, -1560198380);
+      b = II(b, c, d, a, m[i+13], 21,  1309151649);
+      a = II(a, b, c, d, m[i+ 4],  6, -145523070);
+      d = II(d, a, b, c, m[i+11], 10, -1120210379);
+      c = II(c, d, a, b, m[i+ 2], 15,  718787259);
+      b = II(b, c, d, a, m[i+ 9], 21, -343485551);
+
+      a = (a + aa) >>> 0;
+      b = (b + bb) >>> 0;
+      c = (c + cc) >>> 0;
+      d = (d + dd) >>> 0;
+    }
+
+    return crypt.endian([a, b, c, d]);
+  };
+
+  // Auxiliary functions
+  md5._ff  = function (a, b, c, d, x, s, t) {
+    var n = a + (b & c | ~b & d) + (x >>> 0) + t;
+    return ((n << s) | (n >>> (32 - s))) + b;
+  };
+  md5._gg  = function (a, b, c, d, x, s, t) {
+    var n = a + (b & d | c & ~d) + (x >>> 0) + t;
+    return ((n << s) | (n >>> (32 - s))) + b;
+  };
+  md5._hh  = function (a, b, c, d, x, s, t) {
+    var n = a + (b ^ c ^ d) + (x >>> 0) + t;
+    return ((n << s) | (n >>> (32 - s))) + b;
+  };
+  md5._ii  = function (a, b, c, d, x, s, t) {
+    var n = a + (c ^ (b | ~d)) + (x >>> 0) + t;
+    return ((n << s) | (n >>> (32 - s))) + b;
+  };
+
+  // Package private blocksize
+  md5._blocksize = 16;
+  md5._digestsize = 16;
+
+  module.exports = function (message, options) {
+    if (message === undefined || message === null)
+      throw new Error('Illegal argument ' + message);
+
+    var digestbytes = crypt.wordsToBytes(md5(message, options));
+    return options && options.asBytes ? digestbytes :
+        options && options.asString ? bin.bytesToString(digestbytes) :
+        crypt.bytesToHex(digestbytes);
+  };
+
+})();
 
 
 /***/ }),
@@ -1867,10 +2264,12 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 /*!*****************************************************!*\
   !*** ./node_modules/react/cjs/react.development.js ***!
   \*****************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+/***/ ((module, exports, __webpack_require__) => {
 
 "use strict";
-/** @license React v17.0.2
+/* module decorator */ module = __webpack_require__.nmd(module);
+/**
+ * @license React
  * react.development.js
  *
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -1883,64 +2282,37 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 
 if (true) {
   (function() {
-'use strict';
 
-var _assign = __webpack_require__(/*! object-assign */ "./node_modules/object-assign/index.js");
+          'use strict';
 
-// TODO: this is special because it gets imported during build.
-var ReactVersion = '17.0.2';
+/* global __REACT_DEVTOOLS_GLOBAL_HOOK__ */
+if (
+  typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== 'undefined' &&
+  typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart ===
+    'function'
+) {
+  __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(new Error());
+}
+          var ReactVersion = '18.2.0';
 
 // ATTENTION
 // When adding new symbols to this file,
 // Please consider also adding to 'react-devtools-shared/src/backend/ReactSymbols'
-// The Symbol used to tag the ReactElement-like types. If there is no native Symbol
-// nor polyfill, then a plain number is used for performance.
-var REACT_ELEMENT_TYPE = 0xeac7;
-var REACT_PORTAL_TYPE = 0xeaca;
-exports.Fragment = 0xeacb;
-exports.StrictMode = 0xeacc;
-exports.Profiler = 0xead2;
-var REACT_PROVIDER_TYPE = 0xeacd;
-var REACT_CONTEXT_TYPE = 0xeace;
-var REACT_FORWARD_REF_TYPE = 0xead0;
-exports.Suspense = 0xead1;
-var REACT_SUSPENSE_LIST_TYPE = 0xead8;
-var REACT_MEMO_TYPE = 0xead3;
-var REACT_LAZY_TYPE = 0xead4;
-var REACT_BLOCK_TYPE = 0xead9;
-var REACT_SERVER_BLOCK_TYPE = 0xeada;
-var REACT_FUNDAMENTAL_TYPE = 0xead5;
-var REACT_SCOPE_TYPE = 0xead7;
-var REACT_OPAQUE_ID_TYPE = 0xeae0;
-var REACT_DEBUG_TRACING_MODE_TYPE = 0xeae1;
-var REACT_OFFSCREEN_TYPE = 0xeae2;
-var REACT_LEGACY_HIDDEN_TYPE = 0xeae3;
-
-if (typeof Symbol === 'function' && Symbol.for) {
-  var symbolFor = Symbol.for;
-  REACT_ELEMENT_TYPE = symbolFor('react.element');
-  REACT_PORTAL_TYPE = symbolFor('react.portal');
-  exports.Fragment = symbolFor('react.fragment');
-  exports.StrictMode = symbolFor('react.strict_mode');
-  exports.Profiler = symbolFor('react.profiler');
-  REACT_PROVIDER_TYPE = symbolFor('react.provider');
-  REACT_CONTEXT_TYPE = symbolFor('react.context');
-  REACT_FORWARD_REF_TYPE = symbolFor('react.forward_ref');
-  exports.Suspense = symbolFor('react.suspense');
-  REACT_SUSPENSE_LIST_TYPE = symbolFor('react.suspense_list');
-  REACT_MEMO_TYPE = symbolFor('react.memo');
-  REACT_LAZY_TYPE = symbolFor('react.lazy');
-  REACT_BLOCK_TYPE = symbolFor('react.block');
-  REACT_SERVER_BLOCK_TYPE = symbolFor('react.server.block');
-  REACT_FUNDAMENTAL_TYPE = symbolFor('react.fundamental');
-  REACT_SCOPE_TYPE = symbolFor('react.scope');
-  REACT_OPAQUE_ID_TYPE = symbolFor('react.opaque.id');
-  REACT_DEBUG_TRACING_MODE_TYPE = symbolFor('react.debug_trace_mode');
-  REACT_OFFSCREEN_TYPE = symbolFor('react.offscreen');
-  REACT_LEGACY_HIDDEN_TYPE = symbolFor('react.legacy_hidden');
-}
-
-var MAYBE_ITERATOR_SYMBOL = typeof Symbol === 'function' && Symbol.iterator;
+// The Symbol used to tag the ReactElement-like types.
+var REACT_ELEMENT_TYPE = Symbol.for('react.element');
+var REACT_PORTAL_TYPE = Symbol.for('react.portal');
+var REACT_FRAGMENT_TYPE = Symbol.for('react.fragment');
+var REACT_STRICT_MODE_TYPE = Symbol.for('react.strict_mode');
+var REACT_PROFILER_TYPE = Symbol.for('react.profiler');
+var REACT_PROVIDER_TYPE = Symbol.for('react.provider');
+var REACT_CONTEXT_TYPE = Symbol.for('react.context');
+var REACT_FORWARD_REF_TYPE = Symbol.for('react.forward_ref');
+var REACT_SUSPENSE_TYPE = Symbol.for('react.suspense');
+var REACT_SUSPENSE_LIST_TYPE = Symbol.for('react.suspense_list');
+var REACT_MEMO_TYPE = Symbol.for('react.memo');
+var REACT_LAZY_TYPE = Symbol.for('react.lazy');
+var REACT_OFFSCREEN_TYPE = Symbol.for('react.offscreen');
+var MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
 var FAUX_ITERATOR_SYMBOL = '@@iterator';
 function getIteratorFn(maybeIterable) {
   if (maybeIterable === null || typeof maybeIterable !== 'object') {
@@ -1972,7 +2344,14 @@ var ReactCurrentDispatcher = {
  * should suspend for if it needs to.
  */
 var ReactCurrentBatchConfig = {
-  transition: 0
+  transition: null
+};
+
+var ReactCurrentActQueue = {
+  current: null,
+  // Used to reproduce behavior of `batchedUpdates` in legacy mode.
+  isBatchingLegacy: false,
+  didScheduleLegacyUpdate: false
 };
 
 /**
@@ -2025,24 +2404,27 @@ function setExtraStackFrame(stack) {
   };
 }
 
-/**
- * Used by act() to track whether you're inside an act() scope.
- */
-var IsSomeRendererActing = {
-  current: false
-};
+// -----------------------------------------------------------------------------
+
+var enableScopeAPI = false; // Experimental Create Event Handle API.
+var enableCacheElement = false;
+var enableTransitionTracing = false; // No known bugs, but needs performance testing
+
+var enableLegacyHidden = false; // Enables unstable_avoidThisFallback feature in Fiber
+// stuff. Intended to enable React core members to more easily debug scheduling
+// issues in DEV builds.
+
+var enableDebugTracing = false; // Track which Fiber(s) schedule render work.
 
 var ReactSharedInternals = {
   ReactCurrentDispatcher: ReactCurrentDispatcher,
   ReactCurrentBatchConfig: ReactCurrentBatchConfig,
-  ReactCurrentOwner: ReactCurrentOwner,
-  IsSomeRendererActing: IsSomeRendererActing,
-  // Used by renderers to avoid bundling object-assign twice in UMD bundles:
-  assign: _assign
+  ReactCurrentOwner: ReactCurrentOwner
 };
 
 {
   ReactSharedInternals.ReactDebugCurrentFrame = ReactDebugCurrentFrame;
+  ReactSharedInternals.ReactCurrentActQueue = ReactCurrentActQueue;
 }
 
 // by calls to these methods by a Babel plugin.
@@ -2052,20 +2434,24 @@ var ReactSharedInternals = {
 
 function warn(format) {
   {
-    for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-      args[_key - 1] = arguments[_key];
-    }
+    {
+      for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+        args[_key - 1] = arguments[_key];
+      }
 
-    printWarning('warn', format, args);
+      printWarning('warn', format, args);
+    }
   }
 }
 function error(format) {
   {
-    for (var _len2 = arguments.length, args = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
-      args[_key2 - 1] = arguments[_key2];
-    }
+    {
+      for (var _len2 = arguments.length, args = new Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+        args[_key2 - 1] = arguments[_key2];
+      }
 
-    printWarning('error', format, args);
+      printWarning('error', format, args);
+    }
   }
 }
 
@@ -2079,10 +2465,11 @@ function printWarning(level, format, args) {
     if (stack !== '') {
       format += '%s';
       args = args.concat([stack]);
-    }
+    } // eslint-disable-next-line react-internal/safe-string-coercion
+
 
     var argsWithFormat = args.map(function (item) {
-      return '' + item;
+      return String(item);
     }); // Careful: RN currently depends on this prefix
 
     argsWithFormat.unshift('Warning: ' + format); // We intentionally don't use spread (or .apply) directly because it
@@ -2180,6 +2567,8 @@ var ReactNoopUpdateQueue = {
   }
 };
 
+var assign = Object.assign;
+
 var emptyObject = {};
 
 {
@@ -2228,10 +2617,8 @@ Component.prototype.isReactComponent = {};
  */
 
 Component.prototype.setState = function (partialState, callback) {
-  if (!(typeof partialState === 'object' || typeof partialState === 'function' || partialState == null)) {
-    {
-      throw Error( "setState(...): takes an object of state variables to update or a function which returns an object of state variables." );
-    }
+  if (typeof partialState !== 'object' && typeof partialState !== 'function' && partialState != null) {
+    throw new Error('setState(...): takes an object of state variables to update or a ' + 'function which returns an object of state variables.');
   }
 
   this.updater.enqueueSetState(this, partialState, callback, 'setState');
@@ -2303,8 +2690,7 @@ function PureComponent(props, context, updater) {
 var pureComponentPrototype = PureComponent.prototype = new ComponentDummy();
 pureComponentPrototype.constructor = PureComponent; // Avoid an extra prototype jump for these methods.
 
-_assign(pureComponentPrototype, Component.prototype);
-
+assign(pureComponentPrototype, Component.prototype);
 pureComponentPrototype.isPureReactComponent = true;
 
 // an immutable object with a single mutable value
@@ -2320,16 +2706,97 @@ function createRef() {
   return refObject;
 }
 
-function getWrappedName(outerType, innerType, wrapperName) {
-  var functionName = innerType.displayName || innerType.name || '';
-  return outerType.displayName || (functionName !== '' ? wrapperName + "(" + functionName + ")" : wrapperName);
+var isArrayImpl = Array.isArray; // eslint-disable-next-line no-redeclare
+
+function isArray(a) {
+  return isArrayImpl(a);
 }
+
+/*
+ * The `'' + value` pattern (used in in perf-sensitive code) throws for Symbol
+ * and Temporal.* types. See https://github.com/facebook/react/pull/22064.
+ *
+ * The functions in this module will throw an easier-to-understand,
+ * easier-to-debug exception with a clear errors message message explaining the
+ * problem. (Instead of a confusing exception thrown inside the implementation
+ * of the `value` object).
+ */
+// $FlowFixMe only called in DEV, so void return is not possible.
+function typeName(value) {
+  {
+    // toStringTag is needed for namespaced types like Temporal.Instant
+    var hasToStringTag = typeof Symbol === 'function' && Symbol.toStringTag;
+    var type = hasToStringTag && value[Symbol.toStringTag] || value.constructor.name || 'Object';
+    return type;
+  }
+} // $FlowFixMe only called in DEV, so void return is not possible.
+
+
+function willCoercionThrow(value) {
+  {
+    try {
+      testStringCoercion(value);
+      return false;
+    } catch (e) {
+      return true;
+    }
+  }
+}
+
+function testStringCoercion(value) {
+  // If you ended up here by following an exception call stack, here's what's
+  // happened: you supplied an object or symbol value to React (as a prop, key,
+  // DOM attribute, CSS property, string ref, etc.) and when React tried to
+  // coerce it to a string using `'' + value`, an exception was thrown.
+  //
+  // The most common types that will cause this exception are `Symbol` instances
+  // and Temporal objects like `Temporal.Instant`. But any object that has a
+  // `valueOf` or `[Symbol.toPrimitive]` method that throws will also cause this
+  // exception. (Library authors do this to prevent users from using built-in
+  // numeric operators like `+` or comparison operators like `>=` because custom
+  // methods are needed to perform accurate arithmetic or comparison.)
+  //
+  // To fix the problem, coerce this object or symbol value to a string before
+  // passing it to React. The most reliable way is usually `String(value)`.
+  //
+  // To find which value is throwing, check the browser or debugger console.
+  // Before this exception was thrown, there should be `console.error` output
+  // that shows the type (Symbol, Temporal.PlainDate, etc.) that caused the
+  // problem and how that type was used: key, atrribute, input value prop, etc.
+  // In most cases, this console output also shows the component and its
+  // ancestor components where the exception happened.
+  //
+  // eslint-disable-next-line react-internal/safe-string-coercion
+  return '' + value;
+}
+function checkKeyStringCoercion(value) {
+  {
+    if (willCoercionThrow(value)) {
+      error('The provided key is an unsupported type %s.' + ' This value must be coerced to a string before before using it here.', typeName(value));
+
+      return testStringCoercion(value); // throw (to help callers find troubleshooting comments)
+    }
+  }
+}
+
+function getWrappedName(outerType, innerType, wrapperName) {
+  var displayName = outerType.displayName;
+
+  if (displayName) {
+    return displayName;
+  }
+
+  var functionName = innerType.displayName || innerType.name || '';
+  return functionName !== '' ? wrapperName + "(" + functionName + ")" : wrapperName;
+} // Keep in sync with react-reconciler/getComponentNameFromFiber
+
 
 function getContextName(type) {
   return type.displayName || 'Context';
-}
+} // Note that the reconciler package should generally prefer to use getComponentNameFromFiber() instead.
 
-function getComponentName(type) {
+
+function getComponentNameFromType(type) {
   if (type == null) {
     // Host root, text node or just invalid type.
     return null;
@@ -2337,7 +2804,7 @@ function getComponentName(type) {
 
   {
     if (typeof type.tag === 'number') {
-      error('Received an unexpected object in getComponentName(). ' + 'This is likely a bug in React. Please file an issue.');
+      error('Received an unexpected object in getComponentNameFromType(). ' + 'This is likely a bug in React. Please file an issue.');
     }
   }
 
@@ -2350,23 +2817,24 @@ function getComponentName(type) {
   }
 
   switch (type) {
-    case exports.Fragment:
+    case REACT_FRAGMENT_TYPE:
       return 'Fragment';
 
     case REACT_PORTAL_TYPE:
       return 'Portal';
 
-    case exports.Profiler:
+    case REACT_PROFILER_TYPE:
       return 'Profiler';
 
-    case exports.StrictMode:
+    case REACT_STRICT_MODE_TYPE:
       return 'StrictMode';
 
-    case exports.Suspense:
+    case REACT_SUSPENSE_TYPE:
       return 'Suspense';
 
     case REACT_SUSPENSE_LIST_TYPE:
       return 'SuspenseList';
+
   }
 
   if (typeof type === 'object') {
@@ -2383,10 +2851,13 @@ function getComponentName(type) {
         return getWrappedName(type, type.render, 'ForwardRef');
 
       case REACT_MEMO_TYPE:
-        return getComponentName(type.type);
+        var outerName = type.displayName || null;
 
-      case REACT_BLOCK_TYPE:
-        return getComponentName(type._render);
+        if (outerName !== null) {
+          return outerName;
+        }
+
+        return getComponentNameFromType(type.type) || 'Memo';
 
       case REACT_LAZY_TYPE:
         {
@@ -2395,11 +2866,13 @@ function getComponentName(type) {
           var init = lazyComponent._init;
 
           try {
-            return getComponentName(init(payload));
+            return getComponentNameFromType(init(payload));
           } catch (x) {
             return null;
           }
         }
+
+      // eslint-disable-next-line no-fallthrough
     }
   }
 
@@ -2407,6 +2880,7 @@ function getComponentName(type) {
 }
 
 var hasOwnProperty = Object.prototype.hasOwnProperty;
+
 var RESERVED_PROPS = {
   key: true,
   ref: true,
@@ -2486,7 +2960,7 @@ function defineRefPropWarningGetter(props, displayName) {
 function warnIfStringRefCannotBeAutoConverted(config) {
   {
     if (typeof config.ref === 'string' && ReactCurrentOwner.current && config.__self && ReactCurrentOwner.current.stateNode !== config.__self) {
-      var componentName = getComponentName(ReactCurrentOwner.current.type);
+      var componentName = getComponentNameFromType(ReactCurrentOwner.current.type);
 
       if (!didWarnAboutStringRefs[componentName]) {
         error('Component "%s" contains the string ref "%s". ' + 'Support for string refs will be removed in a future major release. ' + 'This case cannot be automatically converted to an arrow function. ' + 'We ask you to manually fix this case by using useRef() or createRef() instead. ' + 'Learn more about using refs safely here: ' + 'https://reactjs.org/link/strict-mode-string-ref', componentName, config.ref);
@@ -2595,6 +3069,10 @@ function createElement(type, config, children) {
     }
 
     if (hasValidKey(config)) {
+      {
+        checkKeyStringCoercion(config.key);
+      }
+
       key = '' + config.key;
     }
 
@@ -2667,16 +3145,13 @@ function cloneAndReplaceKey(oldElement, newKey) {
  */
 
 function cloneElement(element, config, children) {
-  if (!!(element === null || element === undefined)) {
-    {
-      throw Error( "React.cloneElement(...): The argument must be a React element, but you passed " + element + "." );
-    }
+  if (element === null || element === undefined) {
+    throw new Error("React.cloneElement(...): The argument must be a React element, but you passed " + element + ".");
   }
 
   var propName; // Original props are copied
 
-  var props = _assign({}, element.props); // Reserved names are extracted
-
+  var props = assign({}, element.props); // Reserved names are extracted
 
   var key = element.key;
   var ref = element.ref; // Self is preserved since the owner is preserved.
@@ -2697,6 +3172,10 @@ function cloneElement(element, config, children) {
     }
 
     if (hasValidKey(config)) {
+      {
+        checkKeyStringCoercion(config.key);
+      }
+
       key = '' + config.key;
     } // Remaining properties override existing props
 
@@ -2795,6 +3274,10 @@ function getElementKey(element, index) {
   // that we don't block potential future ES APIs.
   if (typeof element === 'object' && element !== null && element.key != null) {
     // Explicit key
+    {
+      checkKeyStringCoercion(element.key);
+    }
+
     return escape('' + element.key);
   } // Implicit key determined by the index in the set
 
@@ -2838,7 +3321,7 @@ function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
 
     var childKey = nameSoFar === '' ? SEPARATOR + getElementKey(_child, 0) : nameSoFar;
 
-    if (Array.isArray(mappedChild)) {
+    if (isArray(mappedChild)) {
       var escapedChildKey = '';
 
       if (childKey != null) {
@@ -2850,10 +3333,20 @@ function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
       });
     } else if (mappedChild != null) {
       if (isValidElement(mappedChild)) {
+        {
+          // The `if` statement here prevents auto-disabling of the safe
+          // coercion ESLint rule, so we must manually disable it below.
+          // $FlowFixMe Flow incorrectly thinks React.Portal doesn't have a key
+          if (mappedChild.key && (!_child || _child.key !== mappedChild.key)) {
+            checkKeyStringCoercion(mappedChild.key);
+          }
+        }
+
         mappedChild = cloneAndReplaceKey(mappedChild, // Keep both the (mapped) and old keys if they differ, just as
         // traverseAllChildren used to do for objects as children
         escapedPrefix + ( // $FlowFixMe Flow incorrectly thinks React.Portal doesn't have a key
         mappedChild.key && (!_child || _child.key !== mappedChild.key) ? // $FlowFixMe Flow incorrectly thinks existing element's key can be a number
+        // eslint-disable-next-line react-internal/safe-string-coercion
         escapeUserProvidedKey('' + mappedChild.key) + '/' : '') + childKey);
       }
 
@@ -2869,7 +3362,7 @@ function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
 
   var nextNamePrefix = nameSoFar === '' ? SEPARATOR : nameSoFar + SUBSEPARATOR;
 
-  if (Array.isArray(children)) {
+  if (isArray(children)) {
     for (var i = 0; i < children.length; i++) {
       child = children[i];
       nextName = nextNamePrefix + getElementKey(child, i);
@@ -2902,13 +3395,9 @@ function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
         subtreeCount += mapIntoArray(child, array, escapedPrefix, nextName, callback);
       }
     } else if (type === 'object') {
-      var childrenString = '' + children;
-
-      {
-        {
-          throw Error( "Objects are not valid as a React child (found: " + (childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString) + "). If you meant to render a collection of children, use an array instead." );
-        }
-      }
+      // eslint-disable-next-line react-internal/safe-string-coercion
+      var childrenString = String(children);
+      throw new Error("Objects are not valid as a React child (found: " + (childrenString === '[object Object]' ? 'object with keys {' + Object.keys(children).join(', ') + '}' : childrenString) + "). " + 'If you meant to render a collection of children, use an array ' + 'instead.');
     }
   }
 
@@ -3007,28 +3496,17 @@ function toArray(children) {
 
 function onlyChild(children) {
   if (!isValidElement(children)) {
-    {
-      throw Error( "React.Children.only expected to receive a single React element child." );
-    }
+    throw new Error('React.Children.only expected to receive a single React element child.');
   }
 
   return children;
 }
 
-function createContext(defaultValue, calculateChangedBits) {
-  if (calculateChangedBits === undefined) {
-    calculateChangedBits = null;
-  } else {
-    {
-      if (calculateChangedBits !== null && typeof calculateChangedBits !== 'function') {
-        error('createContext: Expected the optional second argument to be a ' + 'function. Instead received: %s', calculateChangedBits);
-      }
-    }
-  }
-
+function createContext(defaultValue) {
+  // TODO: Second argument used to be an optional `calculateChangedBits`
+  // function. Warn to reserve for future use?
   var context = {
     $$typeof: REACT_CONTEXT_TYPE,
-    _calculateChangedBits: calculateChangedBits,
     // As a workaround to support multiple concurrent renderers, we categorize
     // some renderers as primary and others as secondary. We only expect
     // there to be two concurrent renderers at most: React Native (primary) and
@@ -3041,7 +3519,10 @@ function createContext(defaultValue, calculateChangedBits) {
     _threadCount: 0,
     // These are circular
     Provider: null,
-    Consumer: null
+    Consumer: null,
+    // Add these to use same hidden class in VM as ServerContext
+    _defaultValue: null,
+    _globalName: null
   };
   context.Provider = {
     $$typeof: REACT_PROVIDER_TYPE,
@@ -3057,8 +3538,7 @@ function createContext(defaultValue, calculateChangedBits) {
     // warn for the incorrect usage of Context as a Consumer.
     var Consumer = {
       $$typeof: REACT_CONTEXT_TYPE,
-      _context: context,
-      _calculateChangedBits: context._calculateChangedBits
+      _context: context
     }; // $FlowFixMe: Flow complains about not setting a value, which is intentional here
 
     Object.defineProperties(Consumer, {
@@ -3145,38 +3625,54 @@ function lazyInitializer(payload) {
   if (payload._status === Uninitialized) {
     var ctor = payload._result;
     var thenable = ctor(); // Transition to the next state.
+    // This might throw either because it's missing or throws. If so, we treat it
+    // as still uninitialized and try again next time. Which is the same as what
+    // happens if the ctor or any wrappers processing the ctor throws. This might
+    // end up fixing it if the resolution was a concurrency bug.
 
-    var pending = payload;
-    pending._status = Pending;
-    pending._result = thenable;
     thenable.then(function (moduleObject) {
-      if (payload._status === Pending) {
-        var defaultExport = moduleObject.default;
-
-        {
-          if (defaultExport === undefined) {
-            error('lazy: Expected the result of a dynamic import() call. ' + 'Instead received: %s\n\nYour code should look like: \n  ' + // Break up imports to avoid accidentally parsing them as dependencies.
-            'const MyComponent = lazy(() => imp' + "ort('./MyComponent'))", moduleObject);
-          }
-        } // Transition to the next state.
-
-
+      if (payload._status === Pending || payload._status === Uninitialized) {
+        // Transition to the next state.
         var resolved = payload;
         resolved._status = Resolved;
-        resolved._result = defaultExport;
+        resolved._result = moduleObject;
       }
     }, function (error) {
-      if (payload._status === Pending) {
+      if (payload._status === Pending || payload._status === Uninitialized) {
         // Transition to the next state.
         var rejected = payload;
         rejected._status = Rejected;
         rejected._result = error;
       }
     });
+
+    if (payload._status === Uninitialized) {
+      // In case, we're still uninitialized, then we're waiting for the thenable
+      // to resolve. Set it as pending in the meantime.
+      var pending = payload;
+      pending._status = Pending;
+      pending._result = thenable;
+    }
   }
 
   if (payload._status === Resolved) {
-    return payload._result;
+    var moduleObject = payload._result;
+
+    {
+      if (moduleObject === undefined) {
+        error('lazy: Expected the result of a dynamic imp' + 'ort() call. ' + 'Instead received: %s\n\nYour code should look like: \n  ' + // Break up imports to avoid accidentally parsing them as dependencies.
+        'const MyComponent = lazy(() => imp' + "ort('./MyComponent'))\n\n" + 'Did you accidentally put curly braces around the import?', moduleObject);
+      }
+    }
+
+    {
+      if (!('default' in moduleObject)) {
+        error('lazy: Expected the result of a dynamic imp' + 'ort() call. ' + 'Instead received: %s\n\nYour code should look like: \n  ' + // Break up imports to avoid accidentally parsing them as dependencies.
+        'const MyComponent = lazy(() => imp' + "ort('./MyComponent'))", moduleObject);
+      }
+    }
+
+    return moduleObject.default;
   } else {
     throw payload._result;
   }
@@ -3185,7 +3681,7 @@ function lazyInitializer(payload) {
 function lazy(ctor) {
   var payload = {
     // We use these fields to store the result.
-    _status: -1,
+    _status: Uninitialized,
     _result: ctor
   };
   var lazyType = {
@@ -3271,9 +3767,15 @@ function forwardRef(render) {
         return ownName;
       },
       set: function (name) {
-        ownName = name;
+        ownName = name; // The inner component shouldn't inherit this display name in most cases,
+        // because the component may be used elsewhere.
+        // But it's nice for anonymous functions to inherit the name,
+        // so that our component-stack generation logic will display their frames.
+        // An anonymous function generally suggests a pattern like:
+        //   React.forwardRef((props, ref) => {...});
+        // This kind of inner function is not used elsewhere so the side effect is okay.
 
-        if (render.displayName == null) {
+        if (!render.name && !render.displayName) {
           render.displayName = name;
         }
       }
@@ -3283,9 +3785,11 @@ function forwardRef(render) {
   return elementType;
 }
 
-// Filter certain DOM attributes (e.g. src, href) if their values are empty strings.
+var REACT_MODULE_REFERENCE;
 
-var enableScopeAPI = false; // Experimental Create Event Handle API.
+{
+  REACT_MODULE_REFERENCE = Symbol.for('react.module.reference');
+}
 
 function isValidElementType(type) {
   if (typeof type === 'string' || typeof type === 'function') {
@@ -3293,12 +3797,16 @@ function isValidElementType(type) {
   } // Note: typeof might be other than 'symbol' or 'number' (e.g. if it's a polyfill).
 
 
-  if (type === exports.Fragment || type === exports.Profiler || type === REACT_DEBUG_TRACING_MODE_TYPE || type === exports.StrictMode || type === exports.Suspense || type === REACT_SUSPENSE_LIST_TYPE || type === REACT_LEGACY_HIDDEN_TYPE || enableScopeAPI ) {
+  if (type === REACT_FRAGMENT_TYPE || type === REACT_PROFILER_TYPE || enableDebugTracing  || type === REACT_STRICT_MODE_TYPE || type === REACT_SUSPENSE_TYPE || type === REACT_SUSPENSE_LIST_TYPE || enableLegacyHidden  || type === REACT_OFFSCREEN_TYPE || enableScopeAPI  || enableCacheElement  || enableTransitionTracing ) {
     return true;
   }
 
   if (typeof type === 'object' && type !== null) {
-    if (type.$$typeof === REACT_LAZY_TYPE || type.$$typeof === REACT_MEMO_TYPE || type.$$typeof === REACT_PROVIDER_TYPE || type.$$typeof === REACT_CONTEXT_TYPE || type.$$typeof === REACT_FORWARD_REF_TYPE || type.$$typeof === REACT_FUNDAMENTAL_TYPE || type.$$typeof === REACT_BLOCK_TYPE || type[0] === REACT_SERVER_BLOCK_TYPE) {
+    if (type.$$typeof === REACT_LAZY_TYPE || type.$$typeof === REACT_MEMO_TYPE || type.$$typeof === REACT_PROVIDER_TYPE || type.$$typeof === REACT_CONTEXT_TYPE || type.$$typeof === REACT_FORWARD_REF_TYPE || // This needs to include all possible module reference object
+    // types supported by any Flight configuration anywhere since
+    // we don't know which Flight build this will end up being used
+    // with.
+    type.$$typeof === REACT_MODULE_REFERENCE || type.getModuleId !== undefined) {
       return true;
     }
   }
@@ -3328,9 +3836,15 @@ function memo(type, compare) {
         return ownName;
       },
       set: function (name) {
-        ownName = name;
+        ownName = name; // The inner component shouldn't inherit this display name in most cases,
+        // because the component may be used elsewhere.
+        // But it's nice for anonymous functions to inherit the name,
+        // so that our component-stack generation logic will display their frames.
+        // An anonymous function generally suggests a pattern like:
+        //   React.memo((props) => {...});
+        // This kind of inner function is not used elsewhere so the side effect is okay.
 
-        if (type.displayName == null) {
+        if (!type.name && !type.displayName) {
           type.displayName = name;
         }
       }
@@ -3343,24 +3857,22 @@ function memo(type, compare) {
 function resolveDispatcher() {
   var dispatcher = ReactCurrentDispatcher.current;
 
-  if (!(dispatcher !== null)) {
-    {
-      throw Error( "Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the renderer (such as React DOM)\n2. You might be breaking the Rules of Hooks\n3. You might have more than one copy of React in the same app\nSee https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem." );
+  {
+    if (dispatcher === null) {
+      error('Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for' + ' one of the following reasons:\n' + '1. You might have mismatching versions of React and the renderer (such as React DOM)\n' + '2. You might be breaking the Rules of Hooks\n' + '3. You might have more than one copy of React in the same app\n' + 'See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.');
     }
-  }
+  } // Will result in a null access error if accessed outside render phase. We
+  // intentionally don't throw our own error because this is in a hot path.
+  // Also helps ensure this is inlined.
+
 
   return dispatcher;
 }
-
-function useContext(Context, unstable_observedBits) {
+function useContext(Context) {
   var dispatcher = resolveDispatcher();
 
   {
-    if (unstable_observedBits !== undefined) {
-      error('useContext() second argument is reserved for future ' + 'use in React. Passing it is not supported. ' + 'You passed: %s.%s', unstable_observedBits, typeof unstable_observedBits === 'number' && Array.isArray(arguments[2]) ? '\n\nDid you call array.map(useContext)? ' + 'Calling Hooks inside a loop is not supported. ' + 'Learn more at https://reactjs.org/link/rules-of-hooks' : '');
-    } // TODO: add a more generic warning for invalid values.
-
-
+    // TODO: add a more generic warning for invalid values.
     if (Context._context !== undefined) {
       var realContext = Context._context; // Don't deduplicate because this legitimately causes bugs
       // and nobody should be using this in existing code.
@@ -3373,7 +3885,7 @@ function useContext(Context, unstable_observedBits) {
     }
   }
 
-  return dispatcher.useContext(Context, unstable_observedBits);
+  return dispatcher.useContext(Context);
 }
 function useState(initialState) {
   var dispatcher = resolveDispatcher();
@@ -3390,6 +3902,10 @@ function useRef(initialValue) {
 function useEffect(create, deps) {
   var dispatcher = resolveDispatcher();
   return dispatcher.useEffect(create, deps);
+}
+function useInsertionEffect(create, deps) {
+  var dispatcher = resolveDispatcher();
+  return dispatcher.useInsertionEffect(create, deps);
 }
 function useLayoutEffect(create, deps) {
   var dispatcher = resolveDispatcher();
@@ -3412,6 +3928,22 @@ function useDebugValue(value, formatterFn) {
     var dispatcher = resolveDispatcher();
     return dispatcher.useDebugValue(value, formatterFn);
   }
+}
+function useTransition() {
+  var dispatcher = resolveDispatcher();
+  return dispatcher.useTransition();
+}
+function useDeferredValue(value) {
+  var dispatcher = resolveDispatcher();
+  return dispatcher.useDeferredValue(value);
+}
+function useId() {
+  var dispatcher = resolveDispatcher();
+  return dispatcher.useId();
+}
+function useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) {
+  var dispatcher = resolveDispatcher();
+  return dispatcher.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 // Helpers to patch console.logs to avoid logging during side-effect free
@@ -3477,25 +4009,25 @@ function reenableLogs() {
       }; // $FlowFixMe Flow thinks console is immutable.
 
       Object.defineProperties(console, {
-        log: _assign({}, props, {
+        log: assign({}, props, {
           value: prevLog
         }),
-        info: _assign({}, props, {
+        info: assign({}, props, {
           value: prevInfo
         }),
-        warn: _assign({}, props, {
+        warn: assign({}, props, {
           value: prevWarn
         }),
-        error: _assign({}, props, {
+        error: assign({}, props, {
           value: prevError
         }),
-        group: _assign({}, props, {
+        group: assign({}, props, {
           value: prevGroup
         }),
-        groupCollapsed: _assign({}, props, {
+        groupCollapsed: assign({}, props, {
           value: prevGroupCollapsed
         }),
-        groupEnd: _assign({}, props, {
+        groupEnd: assign({}, props, {
           value: prevGroupEnd
         })
       });
@@ -3536,7 +4068,7 @@ var componentFrameCache;
 
 function describeNativeComponentFrame(fn, construct) {
   // If something asked for a stack inside a fake render, it should get ignored.
-  if (!fn || reentry) {
+  if ( !fn || reentry) {
     return '';
   }
 
@@ -3645,7 +4177,14 @@ function describeNativeComponentFrame(fn, construct) {
 
               if (c < 0 || sampleLines[s] !== controlLines[c]) {
                 // V8 adds a "new" prefix for native classes. Let's remove it to make it prettier.
-                var _frame = '\n' + sampleLines[s].replace(' at new ', ' at ');
+                var _frame = '\n' + sampleLines[s].replace(' at new ', ' at '); // If our component frame is labeled "<anonymous>"
+                // but we have a user-provided "displayName"
+                // splice it in to make the stack more readable.
+
+
+                if (fn.displayName && _frame.includes('<anonymous>')) {
+                  _frame = _frame.replace('<anonymous>', fn.displayName);
+                }
 
                 {
                   if (typeof fn === 'function') {
@@ -3714,7 +4253,7 @@ function describeUnknownElementTypeFrameInDEV(type, source, ownerFn) {
   }
 
   switch (type) {
-    case exports.Suspense:
+    case REACT_SUSPENSE_TYPE:
       return describeBuiltInComponentFrame('Suspense');
 
     case REACT_SUSPENSE_LIST_TYPE:
@@ -3729,9 +4268,6 @@ function describeUnknownElementTypeFrameInDEV(type, source, ownerFn) {
       case REACT_MEMO_TYPE:
         // Memo may contain any component type so we recursively resolve it.
         return describeUnknownElementTypeFrameInDEV(type.type, source, ownerFn);
-
-      case REACT_BLOCK_TYPE:
-        return describeFunctionComponentFrame(type._render);
 
       case REACT_LAZY_TYPE:
         {
@@ -3768,7 +4304,7 @@ function setCurrentlyValidatingElement(element) {
 function checkPropTypes(typeSpecs, values, location, componentName, element) {
   {
     // $FlowFixMe This is okay but Flow doesn't know it.
-    var has = Function.call.bind(Object.prototype.hasOwnProperty);
+    var has = Function.call.bind(hasOwnProperty);
 
     for (var typeSpecName in typeSpecs) {
       if (has(typeSpecs, typeSpecName)) {
@@ -3780,6 +4316,7 @@ function checkPropTypes(typeSpecs, values, location, componentName, element) {
           // This is intentionally an invariant that gets caught. It's the same
           // behavior as without this statement except with a better message.
           if (typeof typeSpecs[typeSpecName] !== 'function') {
+            // eslint-disable-next-line react-internal/prod-error-codes
             var err = Error((componentName || 'React class') + ': ' + location + ' type `' + typeSpecName + '` is invalid; ' + 'it must be a function, usually from the `prop-types` package, but received `' + typeof typeSpecs[typeSpecName] + '`.' + 'This often happens because of typos such as `PropTypes.function` instead of `PropTypes.func`.');
             err.name = 'Invariant Violation';
             throw err;
@@ -3833,7 +4370,7 @@ var propTypesMisspellWarningShown;
 
 function getDeclarationErrorAddendum() {
   if (ReactCurrentOwner.current) {
-    var name = getComponentName(ReactCurrentOwner.current.type);
+    var name = getComponentNameFromType(ReactCurrentOwner.current.type);
 
     if (name) {
       return '\n\nCheck the render method of `' + name + '`.';
@@ -3915,7 +4452,7 @@ function validateExplicitKey(element, parentType) {
 
   if (element && element._owner && element._owner !== ReactCurrentOwner.current) {
     // Give the component that originally created this child.
-    childOwner = " It was passed a child from " + getComponentName(element._owner.type) + ".";
+    childOwner = " It was passed a child from " + getComponentNameFromType(element._owner.type) + ".";
   }
 
   {
@@ -3942,7 +4479,7 @@ function validateChildKeys(node, parentType) {
     return;
   }
 
-  if (Array.isArray(node)) {
+  if (isArray(node)) {
     for (var i = 0; i < node.length; i++) {
       var child = node[i];
 
@@ -4004,12 +4541,12 @@ function validatePropTypes(element) {
 
     if (propTypes) {
       // Intentionally inside to avoid triggering lazy initializers:
-      var name = getComponentName(type);
+      var name = getComponentNameFromType(type);
       checkPropTypes(propTypes, element.props, 'prop', name, element);
     } else if (type.PropTypes !== undefined && !propTypesMisspellWarningShown) {
       propTypesMisspellWarningShown = true; // Intentionally inside to avoid triggering lazy initializers:
 
-      var _name = getComponentName(type);
+      var _name = getComponentNameFromType(type);
 
       error('Component %s declared `PropTypes` instead of `propTypes`. Did you misspell the property assignment?', _name || 'Unknown');
     }
@@ -4074,10 +4611,10 @@ function createElementWithValidation(type, props, children) {
 
     if (type === null) {
       typeString = 'null';
-    } else if (Array.isArray(type)) {
+    } else if (isArray(type)) {
       typeString = 'array';
     } else if (type !== undefined && type.$$typeof === REACT_ELEMENT_TYPE) {
-      typeString = "<" + (getComponentName(type.type) || 'Unknown') + " />";
+      typeString = "<" + (getComponentNameFromType(type.type) || 'Unknown') + " />";
       info = ' Did you accidentally export a JSX literal instead of a component?';
     } else {
       typeString = typeof type;
@@ -4106,7 +4643,7 @@ function createElementWithValidation(type, props, children) {
     }
   }
 
-  if (type === exports.Fragment) {
+  if (type === REACT_FRAGMENT_TYPE) {
     validateFragmentProps(element);
   } else {
     validatePropTypes(element);
@@ -4153,16 +4690,263 @@ function cloneElementWithValidation(element, props, children) {
   return newElement;
 }
 
-{
+function startTransition(scope, options) {
+  var prevTransition = ReactCurrentBatchConfig.transition;
+  ReactCurrentBatchConfig.transition = {};
+  var currentTransition = ReactCurrentBatchConfig.transition;
+
+  {
+    ReactCurrentBatchConfig.transition._updatedFibers = new Set();
+  }
 
   try {
-    var frozenObject = Object.freeze({});
-    /* eslint-disable no-new */
+    scope();
+  } finally {
+    ReactCurrentBatchConfig.transition = prevTransition;
 
-    new Map([[frozenObject, null]]);
-    new Set([frozenObject]);
-    /* eslint-enable no-new */
-  } catch (e) {
+    {
+      if (prevTransition === null && currentTransition._updatedFibers) {
+        var updatedFibersCount = currentTransition._updatedFibers.size;
+
+        if (updatedFibersCount > 10) {
+          warn('Detected a large number of updates inside startTransition. ' + 'If this is due to a subscription please re-write it to use React provided hooks. ' + 'Otherwise concurrent mode guarantees are off the table.');
+        }
+
+        currentTransition._updatedFibers.clear();
+      }
+    }
+  }
+}
+
+var didWarnAboutMessageChannel = false;
+var enqueueTaskImpl = null;
+function enqueueTask(task) {
+  if (enqueueTaskImpl === null) {
+    try {
+      // read require off the module object to get around the bundlers.
+      // we don't want them to detect a require and bundle a Node polyfill.
+      var requireString = ('require' + Math.random()).slice(0, 7);
+      var nodeRequire = module && module[requireString]; // assuming we're in node, let's try to get node's
+      // version of setImmediate, bypassing fake timers if any.
+
+      enqueueTaskImpl = nodeRequire.call(module, 'timers').setImmediate;
+    } catch (_err) {
+      // we're in a browser
+      // we can't use regular timers because they may still be faked
+      // so we try MessageChannel+postMessage instead
+      enqueueTaskImpl = function (callback) {
+        {
+          if (didWarnAboutMessageChannel === false) {
+            didWarnAboutMessageChannel = true;
+
+            if (typeof MessageChannel === 'undefined') {
+              error('This browser does not have a MessageChannel implementation, ' + 'so enqueuing tasks via await act(async () => ...) will fail. ' + 'Please file an issue at https://github.com/facebook/react/issues ' + 'if you encounter this warning.');
+            }
+          }
+        }
+
+        var channel = new MessageChannel();
+        channel.port1.onmessage = callback;
+        channel.port2.postMessage(undefined);
+      };
+    }
+  }
+
+  return enqueueTaskImpl(task);
+}
+
+var actScopeDepth = 0;
+var didWarnNoAwaitAct = false;
+function act(callback) {
+  {
+    // `act` calls can be nested, so we track the depth. This represents the
+    // number of `act` scopes on the stack.
+    var prevActScopeDepth = actScopeDepth;
+    actScopeDepth++;
+
+    if (ReactCurrentActQueue.current === null) {
+      // This is the outermost `act` scope. Initialize the queue. The reconciler
+      // will detect the queue and use it instead of Scheduler.
+      ReactCurrentActQueue.current = [];
+    }
+
+    var prevIsBatchingLegacy = ReactCurrentActQueue.isBatchingLegacy;
+    var result;
+
+    try {
+      // Used to reproduce behavior of `batchedUpdates` in legacy mode. Only
+      // set to `true` while the given callback is executed, not for updates
+      // triggered during an async event, because this is how the legacy
+      // implementation of `act` behaved.
+      ReactCurrentActQueue.isBatchingLegacy = true;
+      result = callback(); // Replicate behavior of original `act` implementation in legacy mode,
+      // which flushed updates immediately after the scope function exits, even
+      // if it's an async function.
+
+      if (!prevIsBatchingLegacy && ReactCurrentActQueue.didScheduleLegacyUpdate) {
+        var queue = ReactCurrentActQueue.current;
+
+        if (queue !== null) {
+          ReactCurrentActQueue.didScheduleLegacyUpdate = false;
+          flushActQueue(queue);
+        }
+      }
+    } catch (error) {
+      popActScope(prevActScopeDepth);
+      throw error;
+    } finally {
+      ReactCurrentActQueue.isBatchingLegacy = prevIsBatchingLegacy;
+    }
+
+    if (result !== null && typeof result === 'object' && typeof result.then === 'function') {
+      var thenableResult = result; // The callback is an async function (i.e. returned a promise). Wait
+      // for it to resolve before exiting the current scope.
+
+      var wasAwaited = false;
+      var thenable = {
+        then: function (resolve, reject) {
+          wasAwaited = true;
+          thenableResult.then(function (returnValue) {
+            popActScope(prevActScopeDepth);
+
+            if (actScopeDepth === 0) {
+              // We've exited the outermost act scope. Recursively flush the
+              // queue until there's no remaining work.
+              recursivelyFlushAsyncActWork(returnValue, resolve, reject);
+            } else {
+              resolve(returnValue);
+            }
+          }, function (error) {
+            // The callback threw an error.
+            popActScope(prevActScopeDepth);
+            reject(error);
+          });
+        }
+      };
+
+      {
+        if (!didWarnNoAwaitAct && typeof Promise !== 'undefined') {
+          // eslint-disable-next-line no-undef
+          Promise.resolve().then(function () {}).then(function () {
+            if (!wasAwaited) {
+              didWarnNoAwaitAct = true;
+
+              error('You called act(async () => ...) without await. ' + 'This could lead to unexpected testing behaviour, ' + 'interleaving multiple act calls and mixing their ' + 'scopes. ' + 'You should - await act(async () => ...);');
+            }
+          });
+        }
+      }
+
+      return thenable;
+    } else {
+      var returnValue = result; // The callback is not an async function. Exit the current scope
+      // immediately, without awaiting.
+
+      popActScope(prevActScopeDepth);
+
+      if (actScopeDepth === 0) {
+        // Exiting the outermost act scope. Flush the queue.
+        var _queue = ReactCurrentActQueue.current;
+
+        if (_queue !== null) {
+          flushActQueue(_queue);
+          ReactCurrentActQueue.current = null;
+        } // Return a thenable. If the user awaits it, we'll flush again in
+        // case additional work was scheduled by a microtask.
+
+
+        var _thenable = {
+          then: function (resolve, reject) {
+            // Confirm we haven't re-entered another `act` scope, in case
+            // the user does something weird like await the thenable
+            // multiple times.
+            if (ReactCurrentActQueue.current === null) {
+              // Recursively flush the queue until there's no remaining work.
+              ReactCurrentActQueue.current = [];
+              recursivelyFlushAsyncActWork(returnValue, resolve, reject);
+            } else {
+              resolve(returnValue);
+            }
+          }
+        };
+        return _thenable;
+      } else {
+        // Since we're inside a nested `act` scope, the returned thenable
+        // immediately resolves. The outer scope will flush the queue.
+        var _thenable2 = {
+          then: function (resolve, reject) {
+            resolve(returnValue);
+          }
+        };
+        return _thenable2;
+      }
+    }
+  }
+}
+
+function popActScope(prevActScopeDepth) {
+  {
+    if (prevActScopeDepth !== actScopeDepth - 1) {
+      error('You seem to have overlapping act() calls, this is not supported. ' + 'Be sure to await previous act() calls before making a new one. ');
+    }
+
+    actScopeDepth = prevActScopeDepth;
+  }
+}
+
+function recursivelyFlushAsyncActWork(returnValue, resolve, reject) {
+  {
+    var queue = ReactCurrentActQueue.current;
+
+    if (queue !== null) {
+      try {
+        flushActQueue(queue);
+        enqueueTask(function () {
+          if (queue.length === 0) {
+            // No additional work was scheduled. Finish.
+            ReactCurrentActQueue.current = null;
+            resolve(returnValue);
+          } else {
+            // Keep flushing work until there's none left.
+            recursivelyFlushAsyncActWork(returnValue, resolve, reject);
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
+    } else {
+      resolve(returnValue);
+    }
+  }
+}
+
+var isFlushing = false;
+
+function flushActQueue(queue) {
+  {
+    if (!isFlushing) {
+      // Prevent re-entrance.
+      isFlushing = true;
+      var i = 0;
+
+      try {
+        for (; i < queue.length; i++) {
+          var callback = queue[i];
+
+          do {
+            callback = callback(true);
+          } while (callback !== null);
+        }
+
+        queue.length = 0;
+      } catch (error) {
+        // If something throws, leave the remaining callbacks on the queue.
+        queue = queue.slice(i + 1);
+        throw error;
+      } finally {
+        isFlushing = false;
+      }
+    }
   }
 }
 
@@ -4179,7 +4963,11 @@ var Children = {
 
 exports.Children = Children;
 exports.Component = Component;
+exports.Fragment = REACT_FRAGMENT_TYPE;
+exports.Profiler = REACT_PROFILER_TYPE;
 exports.PureComponent = PureComponent;
+exports.StrictMode = REACT_STRICT_MODE_TYPE;
+exports.Suspense = REACT_SUSPENSE_TYPE;
 exports.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = ReactSharedInternals;
 exports.cloneElement = cloneElement$1;
 exports.createContext = createContext;
@@ -4190,17 +4978,33 @@ exports.forwardRef = forwardRef;
 exports.isValidElement = isValidElement;
 exports.lazy = lazy;
 exports.memo = memo;
+exports.startTransition = startTransition;
+exports.unstable_act = act;
 exports.useCallback = useCallback;
 exports.useContext = useContext;
 exports.useDebugValue = useDebugValue;
+exports.useDeferredValue = useDeferredValue;
 exports.useEffect = useEffect;
+exports.useId = useId;
 exports.useImperativeHandle = useImperativeHandle;
+exports.useInsertionEffect = useInsertionEffect;
 exports.useLayoutEffect = useLayoutEffect;
 exports.useMemo = useMemo;
 exports.useReducer = useReducer;
 exports.useRef = useRef;
 exports.useState = useState;
+exports.useSyncExternalStore = useSyncExternalStore;
+exports.useTransition = useTransition;
 exports.version = ReactVersion;
+          /* global __REACT_DEVTOOLS_GLOBAL_HOOK__ */
+if (
+  typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== 'undefined' &&
+  typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop ===
+    'function'
+) {
+  __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(new Error());
+}
+        
   })();
 }
 
@@ -4211,7 +5015,7 @@ exports.version = ReactVersion;
 /*!*************************************!*\
   !*** ./node_modules/react/index.js ***!
   \*************************************/
-/***/ (function(module, __unused_webpack_exports, __webpack_require__) {
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
 
@@ -4227,14 +5031,17 @@ if (false) {} else {
 /*!*******************************************************************!*\
   !*** ./node_modules/@babel/runtime/helpers/esm/defineProperty.js ***!
   \*******************************************************************/
-/***/ (function(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": function() { return /* binding */ _defineProperty; }
+/* harmony export */   "default": () => (/* binding */ _defineProperty)
 /* harmony export */ });
+/* harmony import */ var _toPropertyKey_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./toPropertyKey.js */ "./node_modules/@babel/runtime/helpers/esm/toPropertyKey.js");
+
 function _defineProperty(obj, key, value) {
+  key = (0,_toPropertyKey_js__WEBPACK_IMPORTED_MODULE_0__["default"])(key);
   if (key in obj) {
     Object.defineProperty(obj, key, {
       value: value,
@@ -4245,8 +5052,78 @@ function _defineProperty(obj, key, value) {
   } else {
     obj[key] = value;
   }
-
   return obj;
+}
+
+/***/ }),
+
+/***/ "./node_modules/@babel/runtime/helpers/esm/toPrimitive.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/@babel/runtime/helpers/esm/toPrimitive.js ***!
+  \****************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ toPrimitive)
+/* harmony export */ });
+/* harmony import */ var _typeof_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./typeof.js */ "./node_modules/@babel/runtime/helpers/esm/typeof.js");
+
+function toPrimitive(t, r) {
+  if ("object" != (0,_typeof_js__WEBPACK_IMPORTED_MODULE_0__["default"])(t) || !t) return t;
+  var e = t[Symbol.toPrimitive];
+  if (void 0 !== e) {
+    var i = e.call(t, r || "default");
+    if ("object" != (0,_typeof_js__WEBPACK_IMPORTED_MODULE_0__["default"])(i)) return i;
+    throw new TypeError("@@toPrimitive must return a primitive value.");
+  }
+  return ("string" === r ? String : Number)(t);
+}
+
+/***/ }),
+
+/***/ "./node_modules/@babel/runtime/helpers/esm/toPropertyKey.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/@babel/runtime/helpers/esm/toPropertyKey.js ***!
+  \******************************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ toPropertyKey)
+/* harmony export */ });
+/* harmony import */ var _typeof_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./typeof.js */ "./node_modules/@babel/runtime/helpers/esm/typeof.js");
+/* harmony import */ var _toPrimitive_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./toPrimitive.js */ "./node_modules/@babel/runtime/helpers/esm/toPrimitive.js");
+
+
+function toPropertyKey(t) {
+  var i = (0,_toPrimitive_js__WEBPACK_IMPORTED_MODULE_1__["default"])(t, "string");
+  return "symbol" == (0,_typeof_js__WEBPACK_IMPORTED_MODULE_0__["default"])(i) ? i : String(i);
+}
+
+/***/ }),
+
+/***/ "./node_modules/@babel/runtime/helpers/esm/typeof.js":
+/*!***********************************************************!*\
+  !*** ./node_modules/@babel/runtime/helpers/esm/typeof.js ***!
+  \***********************************************************/
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ _typeof)
+/* harmony export */ });
+function _typeof(o) {
+  "@babel/helpers - typeof";
+
+  return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) {
+    return typeof o;
+  } : function (o) {
+    return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
+  }, _typeof(o);
 }
 
 /***/ })
@@ -4265,13 +5142,16 @@ function _defineProperty(obj, key, value) {
 /******/ 		}
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = __webpack_module_cache__[moduleId] = {
-/******/ 			// no module.id needed
-/******/ 			// no module.loaded needed
+/******/ 			id: moduleId,
+/******/ 			loaded: false,
 /******/ 			exports: {}
 /******/ 		};
 /******/ 	
 /******/ 		// Execute the module function
 /******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Flag the module as loaded
+/******/ 		module.loaded = true;
 /******/ 	
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
@@ -4279,49 +5159,58 @@ function _defineProperty(obj, key, value) {
 /******/ 	
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat get default export */
-/******/ 	!function() {
+/******/ 	(() => {
 /******/ 		// getDefaultExport function for compatibility with non-harmony modules
-/******/ 		__webpack_require__.n = function(module) {
+/******/ 		__webpack_require__.n = (module) => {
 /******/ 			var getter = module && module.__esModule ?
-/******/ 				function() { return module['default']; } :
-/******/ 				function() { return module; };
+/******/ 				() => (module['default']) :
+/******/ 				() => (module);
 /******/ 			__webpack_require__.d(getter, { a: getter });
 /******/ 			return getter;
 /******/ 		};
-/******/ 	}();
+/******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/define property getters */
-/******/ 	!function() {
+/******/ 	(() => {
 /******/ 		// define getter functions for harmony exports
-/******/ 		__webpack_require__.d = function(exports, definition) {
+/******/ 		__webpack_require__.d = (exports, definition) => {
 /******/ 			for(var key in definition) {
 /******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
 /******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
 /******/ 				}
 /******/ 			}
 /******/ 		};
-/******/ 	}();
+/******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
-/******/ 	!function() {
-/******/ 		__webpack_require__.o = function(obj, prop) { return Object.prototype.hasOwnProperty.call(obj, prop); }
-/******/ 	}();
+/******/ 	(() => {
+/******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
 /******/ 	
 /******/ 	/* webpack/runtime/make namespace object */
-/******/ 	!function() {
+/******/ 	(() => {
 /******/ 		// define __esModule on exports
-/******/ 		__webpack_require__.r = function(exports) {
+/******/ 		__webpack_require__.r = (exports) => {
 /******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
 /******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
 /******/ 			}
 /******/ 			Object.defineProperty(exports, '__esModule', { value: true });
 /******/ 		};
-/******/ 	}();
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/node module decorator */
+/******/ 	(() => {
+/******/ 		__webpack_require__.nmd = (module) => {
+/******/ 			module.paths = [];
+/******/ 			if (!module.children) module.children = [];
+/******/ 			return module;
+/******/ 		};
+/******/ 	})();
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
 // This entry need to be wrapped in an IIFE because it need to be in strict mode.
-!function() {
+(() => {
 "use strict";
 /*!****************************************************************************!*\
   !*** ./src/advanced-custom-fields-pro/assets/src/js/pro/acf-pro-blocks.js ***!
@@ -4332,7 +5221,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _acf_blocks_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./_acf-blocks.js */ "./src/advanced-custom-fields-pro/assets/src/js/pro/_acf-blocks.js");
 
 
-}();
+})();
+
 /******/ })()
 ;
 //# sourceMappingURL=acf-pro-blocks.js.map
